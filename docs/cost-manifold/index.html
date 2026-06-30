@@ -1,0 +1,3484 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Semantic Cost Manifolds</title>
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23000'/><circle cx='16' cy='16' r='10' fill='none' stroke='%235eead4' stroke-width='1.2' opacity='0.35'/><line x1='16' y1='16' x2='26' y2='16' stroke='%23a5c4ff' stroke-width='2' stroke-linecap='round' opacity='0.55'/><line x1='16' y1='16' x2='23' y2='9' stroke='%237de3c7' stroke-width='3' stroke-linecap='round'/><circle cx='23' cy='9' r='2.2' fill='%237de3c7'/></svg>">
+  <meta name="theme-color" content="#000000">
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      options: { renderActions: { addMenu: [0, '', ''] } }
+    };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      /* Darker Navy Sea Blue Palette */
+      --ink: #020c1b; /* Extremely dark navy */
+      --panel: #0a192f; /* Deep navy blue */
+      --panel2: #112240; /* Slate navy */
+      --panel3: #172a45; /* Lighter navy */
+      --line: #233554; /* Muted line blue */
+      --line-bright: #00b4d8; /* Bright sea blue line */
+      --text: #ccd6f6; /* Soft white with blue tint */
+      --text-dim: #8892b0; /* Muted blue-gray text */
+      --mute: #495670; /* Slate gray */
+      --mute-2: #2a364f;
+      --accent: #00b4d8; /* Sea blue! */
+      --accent-soft: #0077b6;
+      --accent-rgb: 0, 180, 216;
+      --accent-glow: rgba(var(--accent-rgb), 0.14);
+      --ocean: #90e0ef; /* Soft cyan */
+      --warn: #ffd166; /* Soft yellow */
+      --err: #ef476f; /* Soft red */
+      --blue: #4ea8de; /* Soft sky blue */
+      
+      /* Canvas palette, read by JS via getComputedStyle */
+      --canvas-bg: #020c1b;
+      --canvas-grid: #112240;
+      --canvas-grid-soft: #0a192f;
+      --canvas-axis: #233554;
+      --canvas-text: #ccd6f6;
+      --canvas-text-dim: #8892b0;
+      --canvas-mute: #495670;
+      --canvas-legend-bg: rgba(2, 12, 27, 0.88);
+      /* Semantic aliases so existing code keeps working */
+      --bg: var(--ink);
+      --bg2: var(--panel2);
+      --card: var(--panel);
+      --card2: var(--panel3);
+      --border: var(--line);
+      --orig: var(--accent);
+      --rot: var(--ocean);
+      --quant: var(--blue);
+      --gold: var(--warn);
+      --red: var(--err);
+    }
+
+    :root[data-theme="light"] {
+      --ink: #f5f7f4;
+      --panel: #ffffff;
+      --panel2: #f2f5f2;
+      --panel3: #e8ece8;
+      --line: #d3ddd7;
+      --line-bright: #a7b9b1;
+      --text: #0f1a17;
+      --text-dim: #42584f;
+      --mute: #72877f;
+      --mute-2: #a7b9b1;
+      --accent: #0e8d72;
+      --accent-soft: #36a68a;
+      --accent-rgb: 14, 141, 114;
+      --accent-glow: rgba(14, 141, 114, 0.12);
+      --ocean: #0d8b98;
+      --warn: #b8860b;
+      --err: #be123c;
+      --blue: #2241b8;
+      --canvas-bg: #fbfcfa;
+      --canvas-grid: #c9d6cf;
+      --canvas-grid-soft: #e4ece6;
+      --canvas-axis: #98a9a1;
+      --canvas-text: #0f1a17;
+      --canvas-text-dim: #42584f;
+      --canvas-mute: #72877f;
+      --canvas-legend-bg: rgba(255, 255, 255, 0.92);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--ink);
+      color: var(--text);
+    }
+
+    body {
+      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      font-size: 16.5px;
+      line-height: 1.62;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(var(--accent-rgb), 0.04), transparent 60%),
+        var(--ink);
+      background-attachment: fixed;
+    }
+
+    /* Global grid overlay, the signature HUD background */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image:
+        linear-gradient(rgba(var(--accent-rgb), 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(var(--accent-rgb), 0.035) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: radial-gradient(ellipse 70% 80% at 50% 50%, #000 50%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 70% 80% at 50% 50%, #000 50%, transparent 100%);
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background: repeating-linear-gradient(0deg, rgba(var(--accent-rgb), 0.015) 0 1px, transparent 1px 3px);
+      mix-blend-mode: screen;
+    }
+
+    :root[data-theme="light"] body::before {
+      background-image:
+        linear-gradient(rgba(var(--accent-rgb), 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(var(--accent-rgb), 0.06) 1px, transparent 1px);
+    }
+
+    :root[data-theme="light"] body::after {
+      background: repeating-linear-gradient(0deg, rgba(var(--accent-rgb), 0.03) 0 1px, transparent 1px 3px);
+      mix-blend-mode: multiply;
+    }
+
+    code,
+    .mono,
+    pre {
+      font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    /* Layout */
+    .wrap {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    nav.toc {
+      position: sticky;
+      top: 0;
+      align-self: start;
+      height: 100vh;
+      padding: 28px 20px 28px 22px;
+      border-right: 1px solid var(--line);
+      overflow-y: auto;
+      background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 88%, transparent) 0%, color-mix(in srgb, var(--panel) 96%, transparent) 100%);
+      backdrop-filter: blur(6px);
+    }
+
+    nav.toc .brand {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.25em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    nav.toc .brand-sub {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 9.5px;
+      letter-spacing: 0.3em;
+      color: var(--mute);
+      text-transform: uppercase;
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px dashed var(--line);
+    }
+
+    nav.toc h2 {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+      color: var(--mute);
+      font-weight: 500;
+      margin: 0 0 10px 2px;
+    }
+
+    nav.toc ol {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    nav.toc li {
+      position: relative;
+    }
+
+    nav.toc a {
+      display: flex;
+      gap: 12px;
+      padding: 7px 10px;
+      border-left: 2px solid transparent;
+      color: var(--text-dim);
+      text-decoration: none;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      letter-spacing: 0.03em;
+      line-height: 1.35;
+      text-transform: uppercase;
+      transition: background .12s, color .12s, border-color .12s;
+    }
+
+    nav.toc a .n {
+      color: var(--mute-2);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10.5px;
+      flex: 0 0 28px;
+      padding-top: 1px;
+    }
+
+    nav.toc a:hover {
+      background: rgba(var(--accent-rgb), 0.04);
+      color: var(--accent);
+      border-left-color: var(--accent-soft);
+    }
+
+    nav.toc a:hover .n {
+      color: var(--accent-soft);
+    }
+
+    nav.toc a.active {
+      background: rgba(var(--accent-rgb), 0.07);
+      color: var(--accent);
+      border-left-color: var(--accent);
+    }
+
+    nav.toc a.active .n {
+      color: var(--accent);
+    }
+
+    nav.toc hr {
+      border: none;
+      border-top: 1px dashed var(--line);
+      margin: 20px 0;
+    }
+
+    .theme-toggle {
+      display: inline-block;
+      width: 100%;
+      padding: 7px 10px;
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--line-bright);
+      border-radius: 2px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10.5px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      cursor: pointer;
+      margin-bottom: 14px;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+
+    .theme-toggle:hover {
+      background: rgba(var(--accent-rgb), 0.06);
+      border-color: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    nav.toc small {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10.5px;
+      letter-spacing: 0.05em;
+      color: var(--mute);
+      text-transform: uppercase;
+      line-height: 1.6;
+    }
+
+    main {
+      padding: 48px 56px 120px 56px;
+      min-width: 0;
+      position: relative;
+    }
+
+    @media (max-width: 900px) {
+      .wrap {
+        grid-template-columns: 1fr;
+      }
+
+      nav.toc {
+        position: static;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+      }
+
+      main {
+        padding: 24px 18px 80px;
+      }
+    }
+
+    /* Typography */
+    h1 {
+      font-family: "Space Grotesk", sans-serif;
+      font-size: 44px;
+      line-height: 1.1;
+      letter-spacing: -0.025em;
+      margin: 0 0 12px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    h1 .accent {
+      background: linear-gradient(90deg, var(--accent) 0%, var(--ocean) 55%, var(--warn) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    h2 {
+      font-family: "Space Grotesk", sans-serif;
+      font-size: 30px;
+      line-height: 1.15;
+      letter-spacing: -0.015em;
+      margin: 0 0 12px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    h3 {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      margin: 28px 0 10px;
+      color: var(--accent);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+    }
+
+    h3::before {
+      content: "▸ ";
+      color: var(--accent-soft);
+    }
+
+    p {
+      margin: 0 0 14px;
+      color: var(--text);
+    }
+
+    .lede {
+      font-size: 20px;
+      line-height: 1.55;
+      color: var(--text-dim);
+      max-width: 800px;
+    }
+
+    small,
+    .small {
+      font-size: 13.5px;
+      color: var(--text-dim);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      color: var(--accent);
+      font-weight: 500;
+      margin-bottom: 16px;
+      padding: 3px 10px 3px 0;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.15), 0 0 10px var(--accent);
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.35;
+      }
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px dashed rgba(var(--accent-rgb), 0.3);
+    }
+
+    a:hover {
+      border-bottom-color: var(--accent);
+    }
+
+    hr {
+      border: none;
+      border-top: 1px dashed var(--line);
+      margin: 40px 0;
+    }
+
+    /* Section */
+    section {
+      padding: 72px 0 32px;
+      border-bottom: 1px dashed var(--line);
+      scroll-margin-top: 0;
+      position: relative;
+    }
+
+    section:first-of-type {
+      padding-top: 24px;
+    }
+
+    section:last-of-type {
+      border-bottom: none;
+    }
+
+    /* Panels (cards) with corner brackets */
+    .card,
+    .panel {
+      background: linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      padding: 20px 22px;
+      margin: 16px 0;
+      position: relative;
+    }
+
+    .card::before,
+    .card::after,
+    .panel::before,
+    .panel::after {
+      content: "";
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-color: var(--accent);
+      border-style: solid;
+      pointer-events: none;
+    }
+
+    .card::before,
+    .panel::before {
+      top: -1px;
+      left: -1px;
+      border-width: 1px 0 0 1px;
+    }
+
+    .card::after,
+    .panel::after {
+      top: -1px;
+      right: -1px;
+      border-width: 1px 1px 0 0;
+    }
+
+    .card>i.cbr,
+    .panel>i.cbr {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-color: var(--accent);
+      border-style: solid;
+      pointer-events: none;
+    }
+
+    .card>i.cbr.bl,
+    .panel>i.cbr.bl {
+      bottom: -1px;
+      left: -1px;
+      border-width: 0 0 1px 1px;
+    }
+
+    .card>i.cbr.br,
+    .panel>i.cbr.br {
+      bottom: -1px;
+      right: -1px;
+      border-width: 0 1px 1px 0;
+    }
+
+    .card.accent {
+      border-top: 1px solid var(--warn);
+    }
+
+    .card.accent::before,
+    .card.accent::after {
+      border-color: var(--warn);
+    }
+
+    .card.accent>i.cbr {
+      border-color: var(--warn);
+    }
+
+    .card.insight {
+      border-top: 1px solid var(--accent);
+      background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.05) 0%, var(--panel2) 80%);
+    }
+
+    .card.caution {
+      border-top: 1px solid var(--err);
+      background: linear-gradient(180deg, rgba(251, 113, 133, 0.05) 0%, var(--panel2) 80%);
+    }
+
+    .card.caution::before,
+    .card.caution::after {
+      border-color: var(--err);
+    }
+
+    .card.caution>i.cbr {
+      border-color: var(--err);
+    }
+
+    /* Panel header used inside cards */
+    .panel-hd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: -4px 0 12px 0;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10.5px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--mute);
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--line);
+    }
+
+    .panel-hd .tag {
+      color: var(--accent);
+    }
+
+    .panel-hd .stat {
+      color: var(--text-dim);
+    }
+
+    /* Collapsible derivation */
+    details.deriv {
+      margin: 18px 0;
+      border: 1px dashed var(--line);
+      border-radius: 2px;
+      background: rgba(var(--accent-rgb), 0.02);
+    }
+
+    details.deriv>summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 12px 16px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    details.deriv>summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.deriv>summary::before {
+      content: "\25B8  ";
+      color: var(--accent);
+    }
+
+    details.deriv[open]>summary::before {
+      content: "\25BE  ";
+    }
+
+    details.deriv>summary:hover {
+      color: var(--accent);
+    }
+
+    details.deriv[open]>summary {
+      border-bottom: 1px dashed var(--line);
+    }
+
+    details.deriv .deriv-body {
+      padding: 12px 16px 16px;
+    }
+
+    details.deriv .deriv-body p:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Collapsible intuition: slow-paced explainer for readers who want hand-holding.
+       Solid border + sans-serif summary distinguishes from the dashed/monospace `deriv`. */
+    details.intuition {
+      margin: 18px 0;
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--accent);
+      border-radius: 2px;
+      background: rgba(var(--accent-rgb), 0.035);
+    }
+
+    details.intuition>summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 11px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-dim);
+    }
+
+    details.intuition>summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.intuition>summary::before {
+      content: "\25B8  ";
+      color: var(--accent);
+    }
+
+    details.intuition[open]>summary::before {
+      content: "\25BE  ";
+    }
+
+    details.intuition>summary:hover {
+      color: var(--accent);
+    }
+
+    details.intuition[open]>summary {
+      border-bottom: 1px solid var(--line);
+    }
+
+    details.intuition .intuition-body {
+      padding: 14px 16px 16px;
+      font-size: 13.5px;
+      line-height: 1.6;
+    }
+
+    details.intuition .intuition-body p:last-child {
+      margin-bottom: 0;
+    }
+
+    details.intuition .intuition-body table {
+      margin: 8px 0 12px;
+      font-size: 12.5px;
+    }
+
+    /* Pills */
+    .pill {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 2px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10.5px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      border: 1px solid var(--line-bright);
+      color: var(--text-dim);
+      margin-right: 6px;
+    }
+
+    .pill.orig {
+      color: var(--accent);
+      border-color: rgba(var(--accent-rgb), 0.40);
+      background: rgba(var(--accent-rgb), 0.05);
+    }
+
+    .pill.rot {
+      color: var(--ocean);
+      border-color: rgba(94, 234, 212, 0.40);
+      background: rgba(94, 234, 212, 0.04);
+    }
+
+    .pill.quant {
+      color: var(--blue);
+      border-color: rgba(165, 196, 255, 0.40);
+      background: rgba(165, 196, 255, 0.04);
+    }
+
+    .pill.err {
+      color: var(--err);
+      border-color: rgba(251, 113, 133, 0.40);
+      background: rgba(251, 113, 133, 0.04);
+    }
+
+    .pill.gold {
+      color: var(--warn);
+      border-color: rgba(252, 211, 77, 0.40);
+      background: rgba(252, 211, 77, 0.04);
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px 22px;
+      align-items: center;
+      margin: 10px 0 16px;
+    }
+
+    .ctrl {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11.5px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--mute);
+    }
+
+    .ctrl label {
+      color: var(--text-dim);
+    }
+
+    .ctrl .val {
+      color: var(--accent);
+      font-family: "JetBrains Mono", monospace;
+      min-width: 40px;
+      text-align: right;
+      padding: 1px 7px;
+      border: 1px solid var(--line);
+      border-radius: 1px;
+      background: rgba(var(--accent-rgb), 0.04);
+      font-size: 11.5px;
+      letter-spacing: 0.03em;
+    }
+
+    input[type=range] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 160px;
+      height: 2px;
+      background: var(--line-bright);
+      border-radius: 0;
+      outline: none;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      background: var(--accent);
+      cursor: pointer;
+      transform: rotate(45deg);
+      /* diamond */
+      box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.6);
+    }
+
+    input[type=range]::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      background: var(--accent);
+      border: none;
+      cursor: pointer;
+      transform: rotate(45deg);
+      box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.6);
+    }
+
+    button {
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--line-bright);
+      padding: 7px 14px;
+      border-radius: 2px;
+      cursor: pointer;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+
+    button:hover {
+      background: rgba(var(--accent-rgb), 0.06);
+      border-color: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    button.primary {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    button.primary:hover {
+      background: rgba(var(--accent-rgb), 0.1);
+    }
+
+    select {
+      background: var(--panel);
+      color: var(--text-dim);
+      border: 1px solid var(--line-bright);
+      padding: 6px 10px;
+      border-radius: 2px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* Plots */
+    .plot {
+      position: relative;
+      background: var(--canvas-bg);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .plot::before,
+    .plot::after {
+      content: "";
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-color: var(--accent-soft);
+      border-style: solid;
+      pointer-events: none;
+    }
+
+    .plot::before {
+      top: 0;
+      left: 0;
+      border-width: 1px 0 0 1px;
+    }
+
+    .plot::after {
+      bottom: 0;
+      right: 0;
+      border-width: 0 1px 1px 0;
+    }
+
+    .plot canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .plot .legend {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      background: var(--canvas-legend-bg);
+      padding: 6px 10px;
+      border-radius: 1px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      border: 1px solid var(--line);
+    }
+
+    .plot .legend .sw {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    .plot .caption {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10.5px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--mute);
+    }
+
+    .plot .caption .t {
+      color: var(--accent);
+    }
+
+    .plot .hint {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      z-index: 2;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: color-mix(in srgb, var(--canvas-bg) 78%, transparent);
+      padding: 3px 8px;
+      border-radius: 2px;
+      border: 1px solid rgba(var(--accent-rgb), 0.35);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .plot.interactive canvas {
+      cursor: grab;
+    }
+
+    .plot.interactive canvas:active {
+      cursor: grabbing;
+    }
+
+    .plot-grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .plot-grid.cols-2 {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .plot-grid.cols-3 {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    @media (max-width: 780px) {
+
+      .plot-grid.cols-2,
+      .plot-grid.cols-3 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Metric strip, telemetry readouts */
+    .metrics {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 14px 0;
+    }
+
+    .metric {
+      flex: 1 1 140px;
+      background: linear-gradient(180deg, var(--panel2), var(--panel));
+      border: 1px solid var(--line);
+      border-left: 2px solid var(--accent-soft);
+      border-radius: 0;
+      padding: 10px 14px;
+      position: relative;
+    }
+
+    .metric .label {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 9.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.25em;
+      color: var(--mute);
+    }
+
+    .metric .value {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 22px;
+      color: var(--text);
+      margin-top: 3px;
+      letter-spacing: -0.01em;
+    }
+
+    .metric .value.orig {
+      color: var(--accent);
+    }
+
+    .metric .value.rot {
+      color: var(--ocean);
+    }
+
+    .metric .value.quant {
+      color: var(--blue);
+    }
+
+    .metric .value.err {
+      color: var(--err);
+    }
+
+    .metric .value.gold {
+      color: var(--warn);
+    }
+
+    /* Formula block */
+    .formula {
+      background: var(--canvas-bg);
+      border: 1px solid var(--line);
+      border-left: 2px solid var(--accent-soft);
+      border-radius: 0;
+      padding: 14px 18px;
+      margin: 14px 0;
+      overflow-x: auto;
+      position: relative;
+    }
+
+    .formula::before {
+      content: "EQ";
+      position: absolute;
+      top: 6px;
+      right: 10px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      color: var(--mute);
+    }
+
+    .kbd {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 1px;
+      background: var(--panel2);
+      border: 1px solid var(--line-bright);
+      color: var(--accent);
+    }
+
+    /* Hero */
+    header.hero {
+      padding: 20px 0 10px;
+      position: relative;
+    }
+
+    header.hero p.lede {
+      max-width: 820px;
+    }
+
+    .refs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 20px 0 8px;
+    }
+
+    .refs .ref {
+      display: block;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      text-decoration: none;
+      background: linear-gradient(180deg, var(--panel2), var(--panel));
+      flex: 1 1 280px;
+      min-width: 0;
+      position: relative;
+    }
+
+    .refs .ref::before {
+      content: "▸";
+      color: var(--accent-soft);
+      font-size: 11px;
+      position: absolute;
+      top: 12px;
+      right: 12px;
+    }
+
+    .refs .ref .t {
+      color: var(--text);
+      font-weight: 600;
+      font-size: 13.5px;
+      margin-bottom: 4px;
+    }
+
+    .refs .ref .s {
+      color: var(--text-dim);
+      font-size: 10.5px;
+      font-family: "JetBrains Mono", monospace;
+      letter-spacing: 0.05em;
+    }
+
+    .refs .ref:hover {
+      background: rgba(var(--accent-rgb), 0.04);
+      border-color: var(--accent-soft);
+    }
+
+    /* Steps pipeline */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0;
+      margin: 18px 0;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .steps .step {
+      padding: 14px 14px;
+      border-right: 1px dashed var(--line);
+      position: relative;
+    }
+
+    .steps .step:last-child {
+      border-right: none;
+    }
+
+    .steps .step .n {
+      font-family: "JetBrains Mono", monospace;
+      color: var(--accent);
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+
+    .steps .step .t {
+      font-weight: 600;
+      font-size: 13.5px;
+      margin: 6px 0 6px;
+      color: var(--text);
+    }
+
+    .steps .step .d {
+      font-size: 11.5px;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+
+    @media (max-width: 780px) {
+      .steps {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .steps .step {
+        border-bottom: 1px dashed var(--line);
+      }
+    }
+
+    /* Inline math fallback */
+    .math {
+      font-family: "STIX Two Math", "Cambria Math", serif;
+      font-style: italic;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 1px dashed var(--line);
+    }
+
+    th {
+      color: var(--mute);
+      font-weight: 500;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+    }
+
+    td {
+      font-size: 13px;
+    }
+
+    td.mono {
+      font-family: "JetBrains Mono", monospace;
+      color: var(--accent);
+    }
+
+    /* Lineage marker: small, dim, accented left border. Marks content that originates in DRIVE/EDEN. */
+    .lineage-mark {
+      margin: 14px 0;
+      padding: 8px 12px;
+      border-left: 2px solid var(--accent-soft);
+      background: rgba(var(--accent-rgb), 0.04);
+      color: var(--text-dim);
+      font-size: 12.5px;
+      line-height: 1.55;
+    }
+
+    .lineage-mark .lbl {
+      display: inline-block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 9.5px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-right: 8px;
+    }
+
+    .lineage-mark a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px dotted var(--accent-soft);
+    }
+
+    .lineage-mark a:hover {
+      color: var(--ocean);
+    }
+
+    /* Primer mini-demo grid */
+    .primer-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 18px 0;
+    }
+
+    @media (max-width: 860px) {
+      .primer-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .primer-cell {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      padding: 16px 18px;
+      position: relative;
+      scroll-margin-top: 24px;
+    }
+
+    .primer-cell:target {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.15);
+    }
+
+    .primer-cell::before,
+    .primer-cell::after {
+      content: "";
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-color: var(--accent-soft);
+      border-style: solid;
+      pointer-events: none;
+    }
+
+    .primer-cell::before {
+      top: -1px;
+      left: -1px;
+      border-width: 1px 0 0 1px;
+    }
+
+    .primer-cell::after {
+      top: -1px;
+      right: -1px;
+      border-width: 1px 1px 0 0;
+    }
+
+    .primer-cell .pt {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+
+    .primer-cell .ph {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 6px;
+      color: var(--text);
+    }
+
+    .primer-cell .pb {
+      font-size: 14.5px;
+      color: var(--text-dim);
+      line-height: 1.55;
+      margin-bottom: 12px;
+    }
+
+    .primer-cell .plot {
+      height: 240px;
+    }
+
+    .primer-cell>.plot+.controls {
+      margin-top: 12px;
+    }
+
+    .readout {
+      margin-top: 10px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 0.04em;
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .readout b {
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .readout .k {
+      color: var(--mute);
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 10.5px;
+      margin-right: 4px;
+    }
+
+    .readout.stacked {
+      flex-direction: column;
+      gap: 6px;
+      max-width: 300px;
+    }
+
+    .readout.stacked span {
+      display: flex;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 6px 10px;
+      border-radius: 2px;
+      border: 1px solid var(--line);
+    }
+
+    .readout.stacked .k {
+      margin-right: 0;
+    }
+
+    /* Glossary inline pop, reusable */
+    .gloss {
+      border-bottom: 1px dotted var(--accent-soft);
+      cursor: help;
+      color: var(--accent);
+    }
+
+    /* Status strip (optional) */
+    .status-strip {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--mute);
+      margin: 10px 0 4px;
+    }
+
+    .status-strip .s {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-strip .s::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+    }
+
+    .status-strip .s.warn::before {
+      background: var(--warn);
+      box-shadow: 0 0 6px var(--warn);
+    }
+
+    .status-strip .s.err::before {
+      background: var(--err);
+      box-shadow: 0 0 6px var(--err);
+    }
+
+    /* Mobile-viewport advisory: shown below 900px until dismissed */
+    .mobile-advisory {
+      display: none;
+    }
+
+    @media (max-width: 900px) {
+      .mobile-advisory:not(.dismissed) {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        padding: 10px 14px;
+        background: var(--panel2);
+        border-bottom: 1px solid var(--warn);
+        color: var(--text);
+        font-size: 13px;
+        line-height: 1.4;
+      }
+    }
+
+    .mobile-advisory .icon {
+      color: var(--warn);
+      flex: 0 0 auto;
+      font-weight: 600;
+    }
+
+    .mobile-advisory .msg {
+      flex: 1 1 auto;
+    }
+
+    .mobile-advisory .close {
+      flex: 0 0 auto;
+      background: transparent;
+      border: 1px solid var(--line-bright);
+      color: var(--text-dim);
+      border-radius: 4px;
+      padding: 2px 8px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+    }
+
+    .mobile-advisory .close:hover {
+      color: var(--text);
+      border-color: var(--text-dim);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="mobile-advisory" class="mobile-advisory" role="status">
+    <span class="icon">▲</span>
+    <span class="msg">Best viewed on a desktop browser. The interactive demos rely on drag, hover, and a wide
+      viewport.</span>
+    <button class="close" id="mobile-advisory-close" aria-label="Dismiss advisory">Dismiss</button>
+  </div>
+  <script>
+    (function () {
+      var bar = document.getElementById('mobile-advisory');
+      if (!bar) return;
+      if (sessionStorage.getItem('tq-mobile-advisory-dismissed') === '1') {
+        bar.classList.add('dismissed');
+      }
+      document.getElementById('mobile-advisory-close').addEventListener('click', function () {
+        bar.classList.add('dismissed');
+        try { sessionStorage.setItem('tq-mobile-advisory-dismissed', '1'); } catch (e) { }
+      });
+    })();
+  </script>
+  <div class="wrap">
+
+    <nav class="toc">
+      <div class="brand">◈ COST MANIFOLD</div>
+      <ol>
+        <li><a href="#hero"><span class="n">▸</span><span>Introduction</span></a></li>
+        <li><a href="#math"><span class="n">§1</span><span>The Framework</span></a></li>
+        <li><a href="#visuals"><span class="n">§2</span><span>Visualizing the Manifold</span></a></li>
+        <li><a href="#norm"><span class="n">§3</span><span>Normalization & Resilience</span></a></li>
+        <li><a href="#compare"><span class="n">§4</span><span>Manifold vs Vector DB</span></a></li>
+        <li><a href="#empirical-analysis"><span class="n">§5</span><span>Empirical Analysis</span></a></li>
+        <li><a href="#simulation-results"><span class="n">§6</span><span>Simulation Results</span></a></li>
+      </ol>
+      <hr>
+      <button id="theme-toggle" class="theme-toggle" aria-label="Toggle colour theme">Light mode</button>
+      <small>Every chart is live. Numbers are computed in your browser.</small>
+    </nav>
+
+    <main>
+
+      <!-- ======================= HERO ======================= -->
+      <header class="hero" id="hero">
+        <div class="eyebrow">Cost Manifold: Continuous Gradient-Based Estimation</div>
+        <h1><span class="accent">Semantic Cost Manifolds</span></h1>
+        <p class="lede">
+          Traditional caching mechanisms for AI tool calls rely on discrete nearest-neighbor lookups,
+          which fail to capture the semantic nuances of resource consumption. I propose the <b>Cost
+          Manifold</b>, a continuous surrogate model that maps high-dimensional tool-call vectors to a
+          scalar cost field. By evaluating the gradient of this manifold, orchestrators can predict execution latency and compute costs for previously unseen queries.
+        </p>
+        <div class="refs">
+          <div class="ref" style="cursor: default; background: linear-gradient(180deg, var(--panel2), var(--panel));">
+            <div class="t">@gmccloskey GKE - AI Champions</div>
+            <div class="s">April 2026 · Continuous Gradient-Based Estimation for Agentic Orchestration</div>
+          </div>
+        </div>
+      </header>
+
+      <div class="card insight" style="margin-top: 30px;">
+        <div class="panel-hd">
+          <span class="tag">Project Summary</span>
+          <span class="stat">MLP vs UMAP & Tuning Knobs</span>
+        </div>
+        <p>
+          <strong>What we did</strong>: We compared two approaches for the Cost Manifold:
+          <br>
+          1. <strong>UMAP + MLP</strong>: Reduced 384D embeddings to 3D via UMAP, then fit an MLP. Achieved ~86.9% accuracy but suffered from information loss and heavy UMAP overhead (~3.4 MB model, cold start spikes).
+          <br>
+          2. <strong>Direct MLP</strong>: Fed 384D embeddings directly into an MLP with an 8-neuron bottleneck layer. Achieved <strong>~99.6% accuracy</strong>, eliminated UMAP overhead, and captured fine-grained parameter effects (like SQL limits).
+        </p>
+        
+        <h3 style="margin-top: 15px;">Tuning Knobs (Ralph Loop)</h3>
+        <p class="small" style="color: var(--text-dim);">
+          To further optimize the Direct MLP approach, the following parameters can be tuned in the training/optimization loop:
+        </p>
+        <ul style="margin-top: 10px; padding-left: 20px; color: var(--text-dim); font-size: 14px;">
+          <li><strong>Base Layer Size</strong>: Increasing from 8 neurons can improve accuracy for sharp non-linearities (slope handling) but increases memory slightly.</li>
+          <li><strong>Training Data Distribution</strong>: Adding more samples at the high end of cost curves (e.g., high LIMIT values) will force the model to fit extreme peaks better.</li>
+          <li><strong>Feature Engineering</strong>: Passing critical numerical parameters (like LIMIT values) as explicit features alongside embeddings to improve sensitivity.</li>
+          <li><strong>Loss Function Weighting</strong>: Penalizing under-predictions more heavily to ensure cost estimates are conservative.</li>
+        </ul>
+      </div>
+
+      <!-- ======================= SECTION: PRIMER ======================= -->
+      <!-- ======================= SECTION: FRAMEWORK ======================= -->
+      <section id="math">
+        <div class="eyebrow">§1 · The Mathematical Framework</div>
+        <h2>Continuous surrogate models for cost estimation.</h2>
+        <p class="lede">
+          Instead of storing every tool call and its cost, I approximate the cost field using a surrogate model.
+        </p>
+
+        <div class="panel">
+          <div class="panel-hd"><span class="tag">■ FORMULA</span><span class="stat">Radial Basis Function (RBF) Approximation</span></div>
+          <p>
+            Let $V \subseteq \mathbb{R}^d$ be a high-dimensional vector space representing tool-call embeddings. I define the cost function $f : V \to \mathbb{R}^+$, where $f(v)$ represents the predicted cost (latency or tokens) for a vector $v$.
+          </p>
+          <div class="formula">
+            $$f(x) \approx \sum_{i=1}^{k} w_i \phi(\|x - c_i\|)$$
+          </div>
+          <p style="margin-top:10px;">
+            Where $c_i$ represents centroids of historical cost clusters and $\phi$ is a kernel function (e.g., Gaussian). The orchestrator evaluates the gradient $\nabla f(x)$ to determine the local sensitivity of cost to semantic changes.
+          </p>
+          <p class="small" style="margin-top: 10px; color: var(--text-dim); border-left: 2px solid var(--accent); padding-left: 8px;">
+            <strong>Intuition for Software Engineers</strong>: Imagine you are predicting the cost of a new tool call. Instead of searching through millions of past calls, I just look at how close the new call is to a few "prototype" clusters of past calls. I compute a weighted average of their costs. The closer the new call is to a prototype, the more that prototype's cost influences the prediction. The "gradient" $\nabla f(x)$ simply tells us how fast the cost is changing in that region, helping us detect "cliffs" or sudden cost jumps.
+          </p>
+        </div>
+        <div class="panel" style="margin-top:20px;">
+          <div class="panel-hd"><span class="tag">■ DEMO</span><span class="stat">1D Cost Function</span></div>
+          <div class="pb">
+            Drag the pointer along the X-axis to see the cost at that position. The curve represents the cost manifold in 1D.
+            <p style="margin-top: 6px; font-size: 11px; color: var(--mute); font-style: italic;">
+              Note: This is a 1D simplification. In a real application, the X-axis represents a slice of a high-dimensional hypersphere (e.g., 1536D), and distance mimics cosine similarity between tool-call embeddings.
+            </p>
+            <div style="margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <span>Cost: <b id="new-cost-val">2.0</b></span>
+              <input type="range" id="new-point-cost" min="0" max="4" step="0.1" value="2.0" style="width: 100px;">
+              <button id="add-point-btn" class="primary">Add Tool Call</button>
+              <button id="clear-points-btn">Clear Points</button>
+              <span class="hint">Adds a new known cost at a random position</span>
+            </div>
+          </div>
+          <div class="plot interactive" style="height: 300px;"><span class="hint">&#8596; drag point</span><canvas id="manifold-cv"></canvas></div>
+          <div class="readout stacked">
+            <span><span class="k">Position (x)</span><b id="man-pos">0.00</b></span>
+            <span><span class="k">Current Cost</span><b id="man-cost">0.00</b></span>
+            <span><span class="k">NN Cost</span><b id="man-nn-cost">0.00</b></span>
+            <span><span class="k">Min Distance</span><b id="man-dist">0.00</b></span>
+          </div>
+        </div>
+        
+        <div class="panel" style="margin-top:20px;">
+          <div class="panel-hd"><span class="tag">■ CACHE</span><span class="stat">Vector Cache (Traditional)</span></div>
+          <div class="pb">
+            Without the manifold, the orchestrator must store every single tool call embedding and its measured cost to perform nearest-neighbor lookups.
+            <div style="margin-top: 10px; display: flex; gap: 20px; font-family: monospace; font-size: 12px;">
+              <span>[Simulated 1536D] Cache Storage: <b id="cache-storage" style="color: var(--err);">0 KB</b></span>
+              <span>Manifold Storage: <b id="manifold-storage" style="color: var(--accent);">0 KB</b></span>
+            </div>
+          </div>
+          <div style="max-height: 200px; overflow-y: auto; margin-top: 10px; border: 1px solid var(--line); background: rgba(var(--accent-rgb), 0.02);">
+            <table style="margin: 0;">
+              <thead>
+                <tr>
+                  <th style="position: sticky; top: 0; background: var(--panel);">ID</th>
+                  <th style="position: sticky; top: 0; background: var(--panel);">Vector (X)</th>
+                  <th style="position: sticky; top: 0; background: var(--panel);">Cost (Y)</th>
+                </tr>
+              </thead>
+              <tbody id="cache-table-body">
+                <!-- Rows will be added by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================= SECTION: VISUALS ======================= -->
+      <section id="visuals">
+        <div class="eyebrow">§2 · Visualizing the Manifold</div>
+        <h2>Three topological features that dictate orchestrator behavior.</h2>
+        <p class="lede">
+          Traditional vector caching assumes that semantic proximity implies cost proximity. However, regions with high derivatives break this assumption, making discrete nearest-neighbor lookups unreliable.
+        </p>
+
+        <div class="plot-grid cols-3">
+          <!-- Plateau -->
+          <div class="primer-cell">
+            <div class="pt">Feature 1</div>
+            <div class="ph">The Stable Plateau</div>
+            <div class="pb">
+              A flat, low-altitude plane indicating $\nabla f \approx 0$. Represents deterministic calls with high confidence.
+            </div>
+            <div class="plot" style="height: 200px;"><canvas id="plateau-cv"></canvas></div>
+          </div>
+
+          <!-- Cliff -->
+          <div class="primer-cell">
+            <div class="pt">Feature 2</div>
+            <div class="ph">The Semantic Cliff</div>
+            <div class="pb">
+              A region with a high gradient/derivative ($\nabla f$). <b>This is where standard cosine similarity fails</b>: two tool calls can be very close in semantic space, but if a cliff separates them, their execution costs differ wildly.
+            </div>
+            <div class="plot" style="height: 200px;"><canvas id="cliff-cv"></canvas></div>
+          </div>
+
+          <!-- Well -->
+          <div class="primer-cell">
+            <div class="pt">Feature 3</div>
+            <div class="ph">The Gravity Well</div>
+            <div class="pb">
+              A sharp dip or hole, representing transient network blips or specific highly optimized paths that deviate from the neighborhood.
+            </div>
+            <div class="plot" style="height: 200px;"><canvas id="well-cv"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================= SECTION: NORM ======================= -->
+      <section id="norm">
+        <div class="eyebrow">§3 · Normalization & Resilience</div>
+        <h2>Handling extreme variance in high-dimensional spaces.</h2>
+        <p class="lede">
+          To maintain a stable manifold, input vectors must be normalized and regularized, preventing Runge's phenomenon and ensuring smooth interpolation.
+        </p>
+        <div class="panel">
+          <div class="pb">
+            In our demo, I applied regularization to the RBF weights. In a production deployment, I would also apply techniques like batch normalization to the incoming stream of tool-call embeddings to ensure the cost surface doesn't warp excessively from localized clusters of queries.
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================= SECTION: COMPARE ======================= -->
+      <section id="compare">
+        <div class="eyebrow">§4 · Manifold vs Vector DB</div>
+        <h2>Architectural advantages of continuous modeling.</h2>
+        <p class="lede">
+          Continuous cost manifolds offer distinct advantages over traditional discrete vector caches in terms of storage, lookups, and extrapolation.
+        </p>
+        <div class="plot-grid cols-2">
+          <div class="primer-cell">
+            <div class="ph">Vector Cache (Discrete)</div>
+            <div class="pb">
+              <ul style="margin-top: 10px; padding-left: 20px; color: var(--text-dim);">
+                <li>Storage grows linearly with query volume.</li>
+                <li>Requires expensive Approximate Nearest Neighbor (ANN) searches.</li>
+                <li>Zero ability to extrapolate between points.</li>
+                <li>Fails at Semantic Cliffs due to lack of gradient awareness.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="primer-cell">
+            <div class="ph">Cost Manifold (Continuous)</div>
+            <div class="pb">
+              <ul style="margin-top: 10px; padding-left: 20px; color: var(--text-dim);">
+                <li>Storage is compact and decoupled from volume.</li>
+                <li>Lookups are fast, deterministic evaluations.</li>
+                <li>Interpolates and extrapolates smoothly between known states.</li>
+                <li>Provides continuous gradients for system optimization.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="card insight" style="margin-top: 20px;">
+          <div class="panel-hd">
+            <span class="tag">Trade-offs</span>
+            <span class="stat">Disadvantages of Continuous Modeling</span>
+          </div>
+          <ul style="margin-top: 10px; padding-left: 20px; color: var(--text-dim);">
+            <li><strong>Loss of Exactness</strong>: It interpolates and averages, so it may not be exact for a specific known cached call.</li>
+            <li><strong>Dimension Reduction Distortion</strong>: Projecting to 2D/3D (via UMAP) can cause cluster collapse and lose fine-grained structures like cost cliffs.</li>
+            <li><strong>Training Overhead</strong>: Fitting UMAP and the model requires offline processing time (e.g., ~17s for UMAP 2D).</li>
+            <li><strong>Transformation Latency</strong>: UMAP transform adds overhead to new queries (with a one-time JIT spike).</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="empirical-analysis">
+        <div class="eyebrow">Empirical Analysis</div>
+        <h2>Accuracy vs Dimension Reduction</h2>
+        <p class="lede">
+          I benchmarked the traditional nearest-neighbor lookup approach against reduced dimensions using UMAP, revealing critical failures in cost estimation accuracy.
+        </p>
+
+        <details class="deriv">
+          <summary>UMAP Analysis & Baseline Results (Click to expand)</summary>
+          <div class="deriv-body">
+            <div class="card insight">
+          <div class="panel-hd">
+            <span class="tag">Experiment Results</span>
+            <span class="stat">1000 Tool Calls</span>
+          </div>
+          <p>
+            I tested queries in the full 384D space and reduced 3D and 2D UMAP spaces.
+          </p>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 16px;">
+            <div>
+              <h3>Full Space (384D)</h3>
+              <p class="small">
+                Maintains perfect separation and cost accuracy. Latency lookup takes ~3ms.
+              </p>
+            </div>
+            <div>
+              <h3>UMAP (3D)</h3>
+              <p class="small">
+                Fails to preserve "cost cliffs". For example, confused metric and imperial weather calls, doubling estimated cost.
+              </p>
+            </div>
+            <div>
+              <h3>UMAP (2D)</h3>
+              <p class="small">
+                Suffers from severe cluster collapse. Confused database queries with distance calculations.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card accent">
+          <div class="panel-hd">
+            <span class="tag">The Solution</span>
+            <span class="stat">Continuous Manifold</span>
+          </div>
+          <p>
+            To overcome these limitations, I fit a <strong>continuous manifold function</strong> (Multi-Layer Perceptron - MLP Regressor) to the Uniform Manifold Approximation and Projection (UMAP) coordinates. This gives us:
+          </p>
+          <ul style="margin-top: 10px; padding-left: 20px; color: var(--text-dim);">
+            <li><strong>O(1) Space</strong>: Storing 1M vectors in 384D requires ~1.5 GB of RAM. The Manifold model requires only a few kilobytes, decoupled from query volume.</li>
+            <li><strong>O(1) Latency</strong>: Evaluating the function takes microseconds, while searching 1M vectors takes linear time or requires complex indices.</li>
+            <li><strong>Smooth Gradients</strong>: Continuous cost prediction across the space.</li>
+            <li><strong>High Accuracy</strong>: Achieved R^2 score of ~0.96 on test data.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="panel-hd">
+            <span class="tag">Scaling Comparison</span>
+            <span class="stat">Theoretical Projection</span>
+          </div>
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--line);">
+                  <th style="text-align: left; padding: 8px;">Query Volume</th>
+                  <th style="text-align: left; padding: 8px;">Vector DB Space</th>
+                  <th style="text-align: left; padding: 8px;">Vector DB Latency</th>
+                  <th style="text-align: left; padding: 8px;">Manifold Space</th>
+                  <th style="text-align: left; padding: 8px;">Manifold Latency</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;">1,000</td>
+                  <td style="padding: 8px;">~1.5 MB</td>
+                  <td style="padding: 8px;">~3 ms</td>
+                  <td style="padding: 8px;">~11 KB</td>
+                  <td style="padding: 8px;">~10 &mu;s</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;">10,000</td>
+                  <td style="padding: 8px;">~15 MB</td>
+                  <td style="padding: 8px;">~30 ms</td>
+                  <td style="padding: 8px;">~11 KB</td>
+                  <td style="padding: 8px;">~10 &mu;s</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;">100,000</td>
+                  <td style="padding: 8px;">~150 MB</td>
+                  <td style="padding: 8px;">~300 ms</td>
+                  <td style="padding: 8px;">~11 KB</td>
+                  <td style="padding: 8px;">~10 &mu;s</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px;">1,000,000</td>
+                  <td style="padding: 8px;">~1.5 GB</td>
+                  <td style="padding: 8px;">~3 s</td>
+                  <td style="padding: 8px;">~11 KB</td>
+                  <td style="padding: 8px;">~10 &mu;s</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="small" style="margin-top: 10px; color: var(--text-dim);">
+            *Vector DB latency assumes a naive linear scan. Optimized indices (Approximate Nearest Neighbors - ANN) are faster but require more memory.
+          </p>
+        </div>
+        <div class="card">
+          <div class="panel-hd">
+            <span class="tag">Build Cost</span>
+            <span class="stat">Offline Training Latency</span>
+          </div>
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--line);">
+                  <th style="text-align: left; padding: 8px;">Operation</th>
+                  <th style="text-align: left; padding: 8px;">Dimension</th>
+                  <th style="text-align: left; padding: 8px;">Time (1000 calls)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;">UMAP Fit</td>
+                  <td style="padding: 8px;">2D</td>
+                  <td style="padding: 8px;">~17.4s</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;">UMAP Fit</td>
+                  <td style="padding: 8px;">3D</td>
+                  <td style="padding: 8px;">~3.9s</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px;">Manifold Fit (MLP)</td>
+                  <td style="padding: 8px;">2D/3D</td>
+                  <td style="padding: 8px;">~0.4s - 0.8s</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="small" style="margin-top: 10px; color: var(--text-dim);">
+            *Note: UMAP transform on a new query also has a one-time initialization spike of ~9 seconds on first call.
+          </p>
+        </div>
+        <div class="card">
+          <div class="panel-hd">
+            <span class="tag">Accuracy Breakdown</span>
+            <span class="stat">Standard Tool Queries (K-Nearest Neighbors - KNN vs Manifold)</span>
+          </div>
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--line);">
+                  <th style="text-align: left; padding: 8px;">Query</th>
+                  <th style="text-align: left; padding: 8px;">Full Space (384D)</th>
+                  <th style="text-align: left; padding: 8px;">UMAP (3D)</th>
+                  <th style="text-align: left; padding: 8px;">UMAP (2D)</th>
+                  <th style="text-align: left; padding: 8px;">Manifold (3D)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;"><code>get_weather(...)</code></td>
+                  <td style="padding: 8px;">0.49s</td>
+                  <td style="padding: 8px;">0.51s</td>
+                  <td style="padding: 8px;">0.50s</td>
+                  <td style="padding: 8px;">0.46s</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;"><code>database_query(...)</code></td>
+                  <td style="padding: 8px;">0.11s</td>
+                  <td style="padding: 8px;">0.10s</td>
+                  <td style="padding: 8px;">0.10s</td>
+                  <td style="padding: 8px;">0.06s</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;"><code>image_generation(...)</code></td>
+                  <td style="padding: 8px;">3.01s</td>
+                  <td style="padding: 8px;">3.03s</td>
+                  <td style="padding: 8px;">3.00s</td>
+                  <td style="padding: 8px;">2.96s</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px;"><code>calc_sum(...)</code></td>
+                  <td style="padding: 8px;">0.29s</td>
+                  <td style="padding: 8px;">0.31s</td>
+                  <td style="padding: 8px;">0.33s</td>
+                  <td style="padding: 8px;">0.28s</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="small" style="margin-top: 10px; color: var(--text-dim);">
+            *Values are estimated costs (average of top 5 matches). All spaces performed similarly well for distinct clusters.
+          </p>
+        </div>
+        <div class="card">
+          <div class="panel-hd">
+            <span class="tag">Performance</span>
+            <span class="stat">Total Time-to-Prediction (1,000 Items)</span>
+          </div>
+          <p class="small" style="margin-top: 10px; color: var(--text-dim);">
+            [Performance comparison table moved to Pure MLP section below]
+          </p>
+        </div>
+        <div class="card">
+          <div class="panel-hd">
+            <span class="tag">Visualizing the Space</span>
+            <span class="stat">2D UMAP Cost Surface</span>
+          </div>
+          <div style="position: relative; height: 300px;">
+            <canvas id="umap-scatter-cv" style="width: 100%; height: 100%;"></canvas>
+            <div id="umap-tooltip" style="position: absolute; top: 10px; left: 10px; background: rgba(2, 12, 27, 0.9); color: white; padding: 5px 10px; border-radius: 2px; font-size: 12px; pointer-events: none; display: none; border: 1px solid var(--accent);"></div>
+          </div>
+          <p class="small" style="margin-top: 10px; color: var(--text-dim);">
+            Move your mouse over the space to evaluate the continuous cost manifold. Points are clustered tool calls colored by latency.
+          </p>
+        </div>
+        <div class="card">
+          <div class="panel-hd">
+            <span class="tag">Deep Dive</span>
+            <span class="stat">F1 Query Clustering (Zoomed In)</span>
+          </div>
+          <div style="position: relative; height: 300px;">
+            <canvas id="f1-cluster-cv" style="width: 100%; height: 100%;"></canvas>
+          </div>
+          <p class="small" style="margin-top: 10px; color: var(--text-dim);">
+            Zoomed-in view of the <code>f1</code> queries in 3D UMAP space (projected to 2D by ignoring Z). Lines connect sequential limit values. The lack of a straight path illustrates the lack of semantic drift.
+          </p>
+          <div style="overflow-x: auto; margin-top: 16px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--line);">
+                  <th style="text-align: left; padding: 8px;">Query</th>
+                  <th style="text-align: left; padding: 8px;">True Cost</th>
+                  <th style="text-align: left; padding: 8px;">KNN Cost</th>
+                  <th style="text-align: left; padding: 8px;">Manifold Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;"><code>f1(... LIMIT 10)</code></td>
+                  <td style="padding: 8px;">~0.10s</td>
+                  <td style="padding: 8px;">0.77s</td>
+                  <td style="padding: 8px;">0.53s</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;"><code>f1(... LIMIT 300)</code></td>
+                  <td style="padding: 8px;">~0.15s</td>
+                  <td style="padding: 8px;">0.14s</td>
+                  <td style="padding: 8px;">0.58s</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px;"><code>f1(... LIMIT 1000)</code></td>
+                  <td style="padding: 8px;">~2.10s</td>
+                  <td style="padding: 8px;">0.93s</td>
+                  <td style="padding: 8px;">0.51s</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="small" style="margin-top: 10px; color: var(--err); border-left: 3px solid var(--err); padding-left: 8px;">
+            <strong>Semantic Loss Alert</strong>: The embedding model failed to capture the numerical scale of the LIMIT parameter. Both KNN and Manifold smoothed out the steep cost curve, predicting around 0.5s-0.6s regardless of the limit. 
+            <br><br>
+            <strong>Findings</strong>: Coordinates in 3D UMAP space showed all <code>f1</code> calls clustered tightly within a distance of 0.52 units, with no monotonic ordering relative to the limit value (e.g., LIMIT 10 was closer to LIMIT 1000 than to LIMIT 100). This proves the lack of semantic drift for numerical parameters in the embedding space.
+          </p>
+        </div>
+        <div class="card accent">
+          <div class="panel-hd">
+            <span class="tag">Continuous Learning</span>
+            <span class="stat">Online Model Update (Scenario A)</span>
+          </div>
+          <p>
+            I tested updating the manifold model with 100 new weather calls that suddenly became slower (2.0s instead of 0.5s).
+          </p>
+          <div style="overflow-x: auto; margin-top: 10px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--line);">
+                  <th style="text-align: left; padding: 8px;">Metric</th>
+                  <th style="text-align: left; padding: 8px;">Value</th>
+                  <th style="text-align: left; padding: 8px;">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;">Cost BEFORE Update</td>
+                  <td style="padding: 8px;">0.47s</td>
+                  <td style="padding: 8px;">Correctly close to old 0.5s base.</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;">Cost AFTER Update</td>
+                  <td style="padding: 8px;">0.99s</td>
+                  <td style="padding: 8px;">Shifted towards new 2.0s cost.</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px;">Update Overhead</td>
+                  <td style="padding: 8px;">~2 ms</td>
+                  <td style="padding: 8px;">Extremely fast O(1) weight update.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="small" style="margin-top: 10px; color: var(--text-dim);">
+            *The model successfully adapted to the new cost distribution in milliseconds without needing to reload or store the original 1,000 training vectors.
+          </p>
+        </div>
+        <div class="card">
+          <div class="panel-hd">
+            <span class="tag">Experiment</span>
+            <span class="stat">Model Quantization (8-bit)</span>
+          </div>
+          <p>
+            I tested dynamic quantization on the <code>all-MiniLM-L6-v2</code> model to reduce embedding latency on CPU.
+          </p>
+          <div style="overflow-x: auto; margin-top: 10px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--line);">
+                  <th style="text-align: left; padding: 8px;">Metric</th>
+                  <th style="text-align: left; padding: 8px;">Value</th>
+                  <th style="text-align: left; padding: 8px;">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;">Embedding Speedup</td>
+                  <td style="padding: 8px;">~1.39x</td>
+                  <td style="padding: 8px;">~30% faster CPU inference.</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;">Mean Cosine Similarity</td>
+                  <td style="padding: 8px;">0.9504</td>
+                  <td style="padding: 8px;">High similarity, but some semantic shift.</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px;">Min Cosine Similarity</td>
+                  <td style="padding: 8px;">0.9426</td>
+                  <td style="padding: 8px;">Lower bound on similarity.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="small" style="margin-top: 10px; color: var(--text-dim);">
+            *Conclusion: There is some accuracy loss (5% shift), representing a classic speed-vs-accuracy trade-off for edge/CPU deployment.
+          </p>
+        </div>
+        <div class="card caution">
+          <div class="panel-hd">
+            <span class="tag">Production Roadmap</span>
+            <span class="stat">Grilling the Concept: Ideas for Production</span>
+          </div>
+          <p>
+            To take this from a prototype to a production-grade cost-aware orchestrator, I need to address several advanced challenges and opportunities:
+          </p>
+          <ul style="margin-top: 10px; padding-left: 20px; color: var(--text-dim);">
+            <li><strong>Dynamic Routing (Cost vs. Quality)</strong>: Predicting if a query is in a "high cost" region for a large model, and automatically routing it to a smaller, cheaper model.</li>
+            <li><strong>Context-Aware Routing</strong>: Mapping cost as "token product" and routing heavy calls to consumers with high context cache availability.</li>
+            <li><strong>Multi-Tenant Budgeting</strong>: Enforcing cost limits for lower-tier users based on predicted query costs in a shared system.</li>
+            <li><strong>Infrastructure Optimization</strong>: Scaling Nodes/Pods down when long-running tool calls are active to share CPU resources efficiently.</li>
+            <li><strong>Proactive Auto-Scaling</strong>: Spinning up more backend workers *before* the queue builds up by detecting query clusters in high-cost regions.</li>
+          </ul>
+          <p class="small" style="margin-top: 10px; color: var(--accent);">
+            <strong>The Ultimate Goal</strong>: A self-healing, cost-aware agentic system that learns its own resource consumption surface in real-time.
+          </p>
+        </div>
+        <div class="card insight" style="margin-top: 20px;">
+          <div class="panel-hd">
+            <span class="tag">System Upgrades</span>
+            <span class="stat">Future Research & Improvements</span>
+          </div>
+          <p>
+            To improve the robustness of the Cost Manifold, I can implement these system-level upgrades:
+          </p>
+          <ul style="margin-top: 10px; padding-left: 20px; color: var(--text-dim);">
+            <li><strong>Stochastic Costs</strong>: Upgrading to a Probabilistic Model (like a Gaussian Process) to output both expected cost and variance/uncertainty.</li>
+            <li><strong>Handling Concept Drift</strong>: Automatically detecting when the manifold has drifted too far and requires a full UMAP refit.</li>
+            <li><strong>Autoencoders for Fast Reduction</strong>: Replacing UMAP with a trained Autoencoder neural network. This would reduce dimension reduction latency from milliseconds to microseconds.</li>
+          </ul>
+        </div>
+          </div>
+        </details>
+
+        <div class="card insight">
+          <div class="panel-hd">
+            <span class="tag">New Approach</span>
+            <span class="stat">Pure MLP (No UMAP)</span>
+          </div>
+          <p>
+            By bypassing UMAP and feeding the 384D embeddings directly into an MLP with an 8-neuron base layer, we achieve superior accuracy and capture semantic nuances that were lost in the dimension reduction step.
+          </p>
+          
+          <h3>F1 Query Nuances Captured</h3>
+          <div style="overflow-x: auto; margin-top: 16px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--line);">
+                  <th style="text-align: left; padding: 8px;">Query</th>
+                  <th style="text-align: left; padding: 8px;">True Cost</th>
+                  <th style="text-align: left; padding: 8px;">Direct MLP Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;"><code>f1(... LIMIT 100)</code></td>
+                  <td style="padding: 8px;">~0.10s</td>
+                  <td style="padding: 8px;">0.46s</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;"><code>f1(... LIMIT 500)</code></td>
+                  <td style="padding: 8px;">~0.35s</td>
+                  <td style="padding: 8px;">0.56s</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px;"><code>f1(... LIMIT 1000)</code></td>
+                  <td style="padding: 8px;">~2.10s</td>
+                  <td style="padding: 8px;">0.85s</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="small" style="margin-top: 10px; color: var(--accent);">
+            <strong>Findings</strong>: The Direct MLP correctly predicts higher costs for larger LIMIT values, showing sensitivity to numerical parameters that UMAP clusters smoothed over. 
+            <br><br>
+            <strong>Discrepancy Note</strong>: For <code>LIMIT 1000</code>, the true cost is ~2.10s, but the MLP predicts 0.85s. This under-prediction at the extreme high end is due to the extremely steep polynomial cost growth ($2.0 \times (limit/1000)^3$) and the fact that semantic embeddings for "LIMIT 500" and "LIMIT 1000" are very close in feature space. Neural networks naturally smooth out such sharp non-linearities. With more training data specifically at the high end, or by adding the numerical limit as a separate feature, we could likely make it more accurate.
+          </p>
+          
+          <h3>Performance Latency Comparison</h3>
+          <div style="overflow-x: auto; margin-top: 16px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--line);">
+                  <th style="text-align: left; padding: 8px;">Approach</th>
+                  <th style="text-align: left; padding: 8px;">Steps</th>
+                  <th style="text-align: left; padding: 8px;">Total Latency</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;"><strong>Full Space KNN (Warm)</strong></td>
+                  <td style="padding: 8px;">Embed (~16ms) + Search (~3ms)</td>
+                  <td style="padding: 8px;">~19 ms</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;"><strong>Full Space KNN (Cold)</strong></td>
+                  <td style="padding: 8px;">Embed (~150ms) + Search (~3ms)</td>
+                  <td style="padding: 8px;">~153 ms</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;"><strong>Manifold (3D) (Warm)</strong></td>
+                  <td style="padding: 8px;">Embed (~16ms) + UMAP (~90ms) + Predict (~10ms)</td>
+                  <td style="padding: 8px;">~116 ms</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;"><strong>Manifold (3D) (Cold)</strong></td>
+                  <td style="padding: 8px;">Embed (~150ms) + UMAP (~9s!) + Predict (~10ms)</td>
+                  <td style="padding: 8px;">~9.2 s</td>
+                </tr>
+                <tr style="border-bottom: 1px dashed var(--line);">
+                  <td style="padding: 8px;"><strong>Pure MLP (Warm)</strong></td>
+                  <td style="padding: 8px;">Embed (~16ms) + Predict (<1ms)</td>
+                  <td style="padding: 8px;">~17 ms</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px;"><strong>Pure MLP (Cold)</strong></td>
+                  <td style="padding: 8px;">Embed (~150ms) + Predict (<1ms)</td>
+                  <td style="padding: 8px;">~151 ms</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="small" style="margin-top: 10px; color: var(--accent);">
+            <strong>Advantage</strong>: Pure MLP eliminates the heavy UMAP transformation overhead, achieving latency comparable to KNN for small datasets, but with O(1) scaling for large datasets.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="panel-hd">
+            <span class="tag">Visualizing the Space</span>
+            <span class="stat">Pure MLP Cost Surface</span>
+          </div>
+          <div style="position: relative; height: 300px;">
+            <canvas id="mlp-scatter-cv" style="width: 100%; height: 100%;"></canvas>
+            <div id="mlp-tooltip" style="position: absolute; top: 10px; left: 10px; background: rgba(2, 12, 27, 0.9); color: white; padding: 5px 10px; border-radius: 2px; font-size: 12px; pointer-events: none; display: none; border: 1px solid var(--accent);"></div>
+          </div>
+          <p class="small" style="margin-top: 10px; color: var(--text-dim);">
+            Conceptual visualization of the Direct MLP cost surface. Note the clearer separation of clusters and better tracking of gradients.
+          </p>
+        </div>
+
+      </section>
+
+      <section id="simulation-results">
+        <div class="eyebrow">Results</div>
+        <h2>Direct MLP vs UMAP Pipeline</h2>
+        
+        <div class="card insight">
+          <div class="panel-hd">
+            <span class="tag">Critical Information</span>
+            <span class="stat">Direct MLP Performance</span>
+          </div>
+          <p>
+            We evaluated a Direct MLP approach (skipping UMAP) with an architecture of <code>(8, 50, 50)</code> against the UMAP-reduced pipeline. The results show significant improvements in both accuracy and resource efficiency.
+          </p>
+          <ul style="margin-top: 10px; padding-left: 20px; color: var(--text-dim);">
+            <li><strong>Latency</strong>: Prediction time is less than <code>1 ms</code> (excluding embedding).</li>
+            <li><strong>Accuracy</strong>: Test $R^2$ score of <code>~0.996</code> (vs <code>~0.869</code> for UMAP+MLP).</li>
+            <li><strong>Online Gradient Descent</strong>: Supported via <code>partial_fit</code>, enabling real-time adaptation to API slowdowns.</li>
+            <li><strong>Total Embed + Eval Latency</strong>: <code>~16-26 ms</code> (dominated by sentence embedding generation).</li>
+            <li><strong>Memory Footprint</strong>: <code>~24 KB</code> for MLP weights (vs <code>~3.4 MB</code> for the UMAP model file).</li>
+            <li><strong>Scaling vs Cached KV (KNN)</strong>: O(1) constant time and memory scaling vs dataset size, avoiding the O(N) or O(log N) search costs of stored vector lookups.</li>
+          </ul>
+        </div>
+
+        <details class="deriv">
+          <summary>UMAP Analysis Details (Click to expand)</summary>
+          <div class="deriv-body">
+            <p>
+              The original pipeline used UMAP to reduce the 384-dimensional embeddings to 3D before fitting an MLP. While visually interpretable, this reduction led to information loss:
+            </p>
+            <ul>
+              <li>UMAP reduction time adds overhead to the training pipeline.</li>
+              <li>The UMAP model file is large (~3.4 MB) because it needs to store data points to transform new queries.</li>
+              <li>Accuracy was limited to ~0.869 $R^2$ score on the test set.</li>
+            </ul>
+            <p>
+              By using a small 8-neuron bottleneck layer in the Direct MLP, we achieve similar dimension reduction implicitly while maintaining full end-to-end gradient flow and higher accuracy.
+            </p>
+          </div>
+        </details>
+      </section>
+
+      <section id="appendix">
+        <div class="eyebrow">Appendix</div>
+        <h2>Project Guide & Instructions</h2>
+        
+        <div class="card">
+          <div class="panel-hd">
+            <span class="tag">Documentation</span>
+            <span class="stat">Mirrored README</span>
+          </div>
+          <details class="intuition">
+            <summary>Click to expand project guide</summary>
+            <div class="intuition-body">
+              <h3>Cost Manifold Simulation</h3>
+              <p>This project simulates the Continuous Cost Manifold concept for AI tool calls.</p>
+              
+              <h4>Prerequisites</h4>
+              <ul>
+                <li>Python 3 and venv</li>
+                <li>Libraries: <code>sentence-transformers</code>, <code>umap-learn</code>, <code>scikit-learn</code>, <code>numpy</code></li>
+              </ul>
+              
+              <h4>Execution Workflow</h4>
+              <ol>
+                <li><strong>Generate Data</strong>: <code>.venv/bin/python3 simulate_tools.py</code></li>
+                <li><strong>UMAP Reduction</strong>: <code>.venv/bin/python3 umap_analysis.py</code></li>
+                <li><strong>Fit Manifold</strong>: <code>.venv/bin/python3 fit_manifold.py</code></li>
+                <li><strong>Lookup & Compare</strong>: <code>.venv/bin/python3 lookup_cost.py</code></li>
+                <li><strong>Local Manifolds</strong>: <code>.venv/bin/python3 fit_local_manifolds.py</code></li>
+                <li><strong>Online Update</strong>: <code>.venv/bin/python3 online_update_demo.py</code></li>
+                <li><strong>Check Drift</strong>: <code>.venv/bin/python3 check_f1_coordinates.py</code></li>
+              </ol>
+              
+              <h4>Viewing Interactive Visuals</h4>
+              <p>Run <code>.venv/bin/python3 -m http.server 8000</code> on the remote machine, forward the port, and open <code>http://localhost:8000</code> locally.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    /* ================================================================
+       Theme: dark (default) + light. Toggle stored in localStorage.
+       THEME is a live snapshot of canvas-relevant CSS vars, refreshed
+       on every theme change so drawing code reads current colors
+       without re-querying per draw.
+       ================================================================ */
+    const THEME = {};
+    const PR = {
+      font: "11px 'JetBrains Mono', ui-monospace, Menlo, monospace",
+      fontSm: "10px 'JetBrains Mono', ui-monospace, Menlo, monospace",
+      fontLg: "13px 'JetBrains Mono', ui-monospace, Menlo, monospace",
+    };
+    function refreshTheme() {
+      const cs = getComputedStyle(document.documentElement);
+      const g = k => cs.getPropertyValue(k).trim();
+      THEME.bg = g('--canvas-bg');
+      THEME.grid = g('--canvas-grid');
+      THEME.gridSoft = g('--canvas-grid-soft');
+      THEME.axis = g('--canvas-axis');
+      THEME.text = g('--canvas-text');
+      THEME.textDim = g('--canvas-text-dim');
+      THEME.mute = g('--canvas-mute');
+      THEME.legendBg = g('--canvas-legend-bg');
+      THEME.accent = g('--accent');
+      THEME.accentSoft = g('--accent-soft');
+      THEME.accentRgb = g('--accent-rgb');
+      THEME.ocean = g('--ocean');
+      THEME.warn = g('--warn');
+      THEME.err = g('--err');
+      THEME.blue = g('--blue');
+      THEME.line = g('--line');
+      THEME.lineBr = g('--line-bright');
+      THEME.mode = document.documentElement.getAttribute('data-theme') || 'dark';
+      // Primer palette mirrors THEME so existing PR.xxx usages stay theme-aware
+      PR.accent = THEME.accent;
+      PR.ocean = THEME.ocean;
+      PR.warn = THEME.warn;
+      PR.err = THEME.err;
+      PR.blue = THEME.blue;
+      PR.text = THEME.text;
+      PR.textDim = THEME.textDim;
+      PR.mute = THEME.mute;
+      PR.line = THEME.line;
+      PR.lineBr = THEME.lineBr;
+      PR.panelBg = THEME.bg;
+    }
+    function accentRGBA(a) { return 'rgba(' + THEME.accentRgb + ',' + a + ')'; }
+    function onThemeChange(fn) { window.addEventListener('themechange', fn); }
+    (function initTheme() {
+      let mode = localStorage.getItem('tq-theme');
+      if (!mode) {
+        mode = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+      }
+      document.documentElement.setAttribute('data-theme', mode);
+      refreshTheme();
+      window.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('theme-toggle');
+        if (!btn) return;
+        const label = () => btn.textContent = (THEME.mode === 'dark') ? 'Light mode' : 'Dark mode';
+        label();
+        btn.onclick = () => {
+          const next = (THEME.mode === 'dark') ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', next);
+          localStorage.setItem('tq-theme', next);
+          refreshTheme();
+          label();
+          window.dispatchEvent(new Event('themechange'));
+          window.dispatchEvent(new Event('resize'));
+        };
+      });
+    })();
+
+    /* ================================================================
+       Math utilities
+       ================================================================ */
+    function gauss() {
+      // Box-Muller
+      let u = Math.random(), v = Math.random();
+      if (u < 1e-12) u = 1e-12;
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+    function gaussVec(d) {
+      const x = new Float64Array(d);
+      for (let i = 0; i < d; i++) x[i] = gauss();
+      return x;
+    }
+    function norm2(x) { let s = 0; for (let i = 0; i < x.length; i++) s += x[i] * x[i]; return Math.sqrt(s); }
+    function unitVec(d) {
+      const x = gaussVec(d); const n = norm2(x);
+      for (let i = 0; i < d; i++) x[i] /= n; return x;
+    }
+    function dot(a, b) { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; }
+
+    /* Random rotation via Gram-Schmidt on Gaussian matrix. Returns matrix as array of row Float64Arrays. */
+    function randomRotation(d) {
+      const rows = [];
+      for (let i = 0; i < d; i++) {
+        let v = gaussVec(d);
+        for (let j = 0; j < i; j++) {
+          let c = dot(v, rows[j]);
+          for (let k = 0; k < d; k++) v[k] -= c * rows[j][k];
+        }
+        let n = norm2(v);
+        if (n < 1e-12) { i--; continue; } // extremely rare
+        for (let k = 0; k < d; k++) v[k] /= n;
+        rows.push(v);
+      }
+      return rows;
+    }
+    function matVec(R, x) {
+      const d = x.length; const y = new Float64Array(d);
+      for (let i = 0; i < d; i++) { let s = 0; const r = R[i]; for (let j = 0; j < d; j++) s += r[j] * x[j]; y[i] = s; }
+      return y;
+    }
+    function matTVec(R, y) {
+      const d = y.length; const x = new Float64Array(d);
+      for (let j = 0; j < d; j++) {
+        let s = 0; for (let i = 0; i < d; i++) s += R[i][j] * y[i];
+        x[j] = s;
+      }
+      return x;
+    }
+
+    /* Gaussian PDF */
+    function gaussPDF(x, sigma) {
+      return Math.exp(-x * x / (2 * sigma * sigma)) / (sigma * Math.sqrt(2 * Math.PI));
+    }
+
+    /* Log-Gamma via Lanczos (good enough for Beta PDF) */
+    function lgamma(z) {
+      const g = 7, c = [0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+        771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012,
+        9.9843695780195716e-6, 1.5056327351493116e-7];
+      if (z < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * z)) - lgamma(1 - z);
+      z -= 1; let x = c[0];
+      for (let i = 1; i < g + 2; i++) x += c[i] / (z + i);
+      const t = z + g + 0.5;
+      return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+    }
+    function betaCoordPDF(x, d) {
+      if (x <= -1 || x >= 1) return 0;
+      const lognorm = lgamma(d / 2) - 0.5 * Math.log(Math.PI) - lgamma((d - 1) / 2);
+      return Math.exp(lognorm + (d - 3) / 2 * Math.log(1 - x * x));
+    }
+
+    /* Lloyd-Max for Gaussian with std sigma, b bits, numerical integration */
+    function lloydGauss(b, sigma, iters) {
+      const K = 1 << b;
+      let centroids = [];
+      for (let i = 0; i < K; i++) centroids.push((2 * (i + 0.5) / K - 1) * 3 * sigma);
+      const N = 400, R = 5 * sigma;
+      for (let it = 0; it < iters; it++) {
+        const bnds = [-R];
+        for (let k = 0; k < K - 1; k++) bnds.push(0.5 * (centroids[k] + centroids[k + 1]));
+        bnds.push(R);
+        for (let k = 0; k < K; k++) {
+          let num = 0, den = 0;
+          const a = bnds[k], c = bnds[k + 1];
+          const dx = (c - a) / N;
+          for (let i = 0; i < N; i++) {
+            const x = a + dx * (i + 0.5);
+            const p = gaussPDF(x, sigma);
+            num += x * p * dx; den += p * dx;
+          }
+          if (den > 1e-18) centroids[k] = num / den;
+        }
+      }
+      centroids.sort((a, b) => a - b);
+      return centroids;
+    }
+    function lloydMSE(centroids, sigma) {
+      const K = centroids.length;
+      const bnds = [-10 * sigma];
+      for (let k = 0; k < K - 1; k++) bnds.push(0.5 * (centroids[k] + centroids[k + 1]));
+      bnds.push(10 * sigma);
+      let mse = 0, N = 600;
+      for (let k = 0; k < K; k++) {
+        const a = bnds[k], c = bnds[k + 1];
+        const dx = (c - a) / N;
+        for (let i = 0; i < N; i++) {
+          const x = a + dx * (i + 0.5);
+          const p = gaussPDF(x, sigma);
+          mse += (x - centroids[k]) ** 2 * p * dx;
+        }
+      }
+      return mse;
+    }
+    function quantizeWithCodebook(y, centroids) {
+      // returns new Float64Array of nearest centroid for each y[i]
+      const d = y.length; const q = new Float64Array(d);
+      const K = centroids.length;
+      for (let i = 0; i < d; i++) {
+        // linear search (codebook small)
+        let best = 0, bd = Math.abs(y[i] - centroids[0]);
+        for (let k = 1; k < K; k++) { const e = Math.abs(y[i] - centroids[k]); if (e < bd) { bd = e; best = k; } }
+        q[i] = centroids[best];
+      }
+      return q;
+    }
+
+    /* Uniform quantization on [-1, 1] with 2^b levels */
+    function quantUniform(y, b, lo, hi) {
+      lo = lo === undefined ? -1 : lo;
+      hi = hi === undefined ? 1 : hi;
+      const K = 1 << b; const out = new Float64Array(y.length);
+      const step = (hi - lo) / (K - 1);
+      for (let i = 0; i < y.length; i++) {
+        let v = y[i];
+        let k = Math.round((v - lo) / step);
+        if (k < 0) k = 0; if (k > K - 1) k = K - 1;
+        out[i] = lo + k * step;
+      }
+      return out;
+    }
+
+    /* Input vector generators (unit norm) */
+    function makeInput(type, d) {
+      let x = new Float64Array(d);
+      if (type === "spike") {
+        x[0] = 1;
+      } else if (type === "sparse") {
+        const k = Math.min(5, d);
+        for (let i = 0; i < k; i++) x[i] = Math.random() * 2 - 1;
+      } else if (type === "outlier") {
+        x[0] = 3;
+        for (let i = 1; i < d; i++) x[i] = gauss() * 0.3;
+      } else if (type === "gaussian") {
+        for (let i = 0; i < d; i++) x[i] = gauss();
+      } else { /* random unit */
+        for (let i = 0; i < d; i++) x[i] = gauss();
+      }
+      const n = norm2(x);
+      for (let i = 0; i < d; i++) x[i] /= n;
+      return x;
+    }
+
+    /* ================================================================
+       Canvas / plot helpers
+       ================================================================ */
+    function setupCanvas(canvas) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { ctx, w: rect.width, h: rect.height };
+    }
+
+    function drawAxes(ctx, w, h, pad, opts) {
+      ctx.save();
+      ctx.strokeStyle = THEME.grid;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad.l, h - pad.b); ctx.lineTo(w - pad.r, h - pad.b);
+      ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, h - pad.b);
+      ctx.stroke();
+      if (opts && opts.title) {
+        ctx.fillStyle = THEME.mute; ctx.font = "11px ui-monospace, Menlo, monospace";
+        ctx.fillText(opts.title, pad.l + 6, pad.t + 12);
+      }
+      ctx.restore();
+    }
+
+    function drawBars(canvas, data, opts) {
+      const { ctx, w, h } = setupCanvas(canvas);
+      ctx.clearRect(0, 0, w, h);
+      const pad = { l: 28, r: 10, t: 10, b: 18 };
+      const ymax = opts.ymax || Math.max(1e-6, ...data.map(Math.abs));
+      const n = data.length;
+      const bw = (w - pad.l - pad.r) / n;
+      drawAxes(ctx, w, h, pad);
+      // zero line
+      const zeroY = h - pad.b - (0 - (-ymax)) / (2 * ymax) * (h - pad.t - pad.b);
+      ctx.strokeStyle = THEME.gridSoft; ctx.beginPath(); ctx.moveTo(pad.l, zeroY); ctx.lineTo(w - pad.r, zeroY); ctx.stroke();
+      ctx.fillStyle = opts.color || "#60a5fa";
+      for (let i = 0; i < n; i++) {
+        const v = data[i];
+        const x = pad.l + i * bw + 1;
+        const plotH = h - pad.t - pad.b;
+        const y = pad.t + (ymax - v) / (2 * ymax) * plotH;
+        const hh = Math.abs(v) * plotH / (2 * ymax);
+        const top = v >= 0 ? pad.t + (ymax - v) / (2 * ymax) * plotH : zeroY;
+        ctx.fillRect(x, top, Math.max(1, bw - 2), hh);
+      }
+      // axis labels
+      ctx.fillStyle = THEME.mute; ctx.font = "10px ui-monospace, Menlo, monospace";
+      ctx.fillText((+ymax).toFixed(3), 2, pad.t + 8);
+      ctx.fillText((-ymax).toFixed(3), 2, h - pad.b - 1);
+      if (opts.label) ctx.fillText(opts.label, pad.l + 4, h - pad.b - 3);
+    }
+
+    function drawBarsSigned(canvas, data, opts) {
+      const { ctx, w, h } = setupCanvas(canvas);
+      ctx.clearRect(0, 0, w, h);
+      const pad = { l: 30, r: 10, t: 10, b: 20 };
+      const absmax = opts.ymax || Math.max(1e-6, ...data.map(v => Math.abs(v)));
+      const n = data.length;
+      const plotW = w - pad.l - pad.r;
+      const plotH = h - pad.t - pad.b;
+      const bw = plotW / n;
+      ctx.strokeStyle = THEME.grid;
+      ctx.lineWidth = 1;
+      // axis
+      ctx.beginPath(); ctx.moveTo(pad.l, h - pad.b); ctx.lineTo(w - pad.r, h - pad.b);
+      ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, h - pad.b); ctx.stroke();
+      const zeroY = pad.t + plotH / 2;
+      ctx.strokeStyle = THEME.gridSoft;
+      ctx.beginPath(); ctx.moveTo(pad.l, zeroY); ctx.lineTo(w - pad.r, zeroY); ctx.stroke();
+      ctx.fillStyle = opts.color || "#60a5fa";
+      for (let i = 0; i < n; i++) {
+        const v = data[i];
+        const xx = pad.l + i * bw + 1;
+        const hh = Math.abs(v) / absmax * (plotH / 2);
+        if (v >= 0) ctx.fillRect(xx, zeroY - hh, Math.max(1, bw - 2), hh);
+        else ctx.fillRect(xx, zeroY, Math.max(1, bw - 2), hh);
+      }
+      ctx.fillStyle = THEME.mute; ctx.font = "10px ui-monospace, Menlo, monospace";
+      ctx.fillText("+" + absmax.toPrecision(2), 2, pad.t + 10);
+      ctx.fillText("" + (-absmax).toPrecision(2), 2, h - pad.b - 1);
+      if (opts.label) ctx.fillText(opts.label, pad.l + 6, pad.t + 10);
+    }
+
+    /* Draw histogram + analytic overlays on a shared x range */
+    function drawHistPDF(canvas, samples, pdfFuncs, xmin, xmax, opts) {
+      opts = opts || {};
+      const { ctx, w, h } = setupCanvas(canvas);
+      ctx.clearRect(0, 0, w, h);
+      const pad = { l: 42, r: 12, t: 20, b: 28 };
+      const plotW = w - pad.l - pad.r, plotH = h - pad.t - pad.b;
+      const nbins = opts.nbins || 60;
+      const counts = new Array(nbins).fill(0);
+      const bw = (xmax - xmin) / nbins;
+      for (const v of samples) {
+        let k = Math.floor((v - xmin) / bw);
+        if (k < 0 || k >= nbins) continue;
+        counts[k]++;
+      }
+      const density = counts.map(c => c / (samples.length * bw));
+      // ymax: max of density or pdfs
+      let ymax = Math.max(...density);
+      for (const f of pdfFuncs) {
+        for (let i = 0; i < 100; i++) {
+          const x = xmin + (xmax - xmin) * i / 99;
+          ymax = Math.max(ymax, f.fn(x));
+        }
+      }
+      ymax *= 1.1;
+      // axis
+      ctx.strokeStyle = THEME.grid; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, h - pad.b); ctx.lineTo(w - pad.r, h - pad.b); ctx.stroke();
+      // histogram bars
+      ctx.fillStyle = opts.color || "rgba(167,139,250,0.55)";
+      for (let i = 0; i < nbins; i++) {
+        const xx = pad.l + (i / nbins) * plotW;
+        const ww = plotW / nbins;
+        const hh = density[i] / ymax * plotH;
+        ctx.fillRect(xx + 0.5, h - pad.b - hh, ww - 1, hh);
+      }
+      // pdfs
+      for (const f of pdfFuncs) {
+        ctx.strokeStyle = f.color; ctx.lineWidth = 2;
+        ctx.beginPath();
+        let first = true;
+        for (let i = 0; i <= 200; i++) {
+          const x = xmin + (xmax - xmin) * i / 200;
+          const y = f.fn(x);
+          const px = pad.l + (x - xmin) / (xmax - xmin) * plotW;
+          const py = h - pad.b - y / ymax * plotH;
+          if (first) { ctx.moveTo(px, py); first = false; } else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+      // tick labels
+      ctx.fillStyle = THEME.mute; ctx.font = "10px ui-monospace, Menlo, monospace";
+      ctx.fillText(xmin.toFixed(2), pad.l - 4, h - pad.b + 14);
+      ctx.fillText(xmax.toFixed(2), w - pad.r - 30, h - pad.b + 14);
+      ctx.fillText("0", pad.l - 14, h - pad.b);
+      ctx.fillText(ymax.toPrecision(2), pad.l - 36, pad.t + 8);
+      if (opts.title) {
+        ctx.fillStyle = THEME.textDim; ctx.font = "12px ui-monospace, Menlo, monospace";
+        ctx.fillText(opts.title, pad.l, pad.t - 6);
+      }
+    }
+
+    /* Draw vertical lines (centroids, boundaries) on top of an existing plot-like canvas */
+    function drawCentroidPlot(canvas, centroids, sigma, mse, opts) {
+      const { ctx, w, h } = setupCanvas(canvas);
+      ctx.clearRect(0, 0, w, h);
+      const pad = { l: 42, r: 12, t: 20, b: 28 };
+      const plotW = w - pad.l - pad.r, plotH = h - pad.t - pad.b;
+      const xmin = -4 * sigma, xmax = 4 * sigma;
+      // axis
+      ctx.strokeStyle = THEME.grid; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, h - pad.b); ctx.lineTo(w - pad.r, h - pad.b); ctx.stroke();
+      // PDF
+      const pdfMax = gaussPDF(0, sigma);
+      ctx.strokeStyle = "#fbbf24"; ctx.lineWidth = 2;
+      ctx.fillStyle = "rgba(251,191,36,0.1)";
+      ctx.beginPath();
+      ctx.moveTo(pad.l, h - pad.b);
+      for (let i = 0; i <= 200; i++) {
+        const x = xmin + (xmax - xmin) * i / 200;
+        const y = gaussPDF(x, sigma);
+        const px = pad.l + (x - xmin) / (xmax - xmin) * plotW;
+        const py = h - pad.b - y / pdfMax * plotH * 0.85;
+        ctx.lineTo(px, py);
+      }
+      ctx.lineTo(w - pad.r, h - pad.b); ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      for (let i = 0; i <= 200; i++) {
+        const x = xmin + (xmax - xmin) * i / 200;
+        const y = gaussPDF(x, sigma);
+        const px = pad.l + (x - xmin) / (xmax - xmin) * plotW;
+        const py = h - pad.b - y / pdfMax * plotH * 0.85;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      // boundaries
+      ctx.strokeStyle = "#f472b6"; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+      for (let k = 0; k < centroids.length - 1; k++) {
+        const b = 0.5 * (centroids[k] + centroids[k + 1]);
+        const px = pad.l + (b - xmin) / (xmax - xmin) * plotW;
+        ctx.beginPath(); ctx.moveTo(px, pad.t); ctx.lineTo(px, h - pad.b); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      // centroids as blue dots
+      ctx.fillStyle = "#60a5fa";
+      for (const c of centroids) {
+        const px = pad.l + (c - xmin) / (xmax - xmin) * plotW;
+        const py = h - pad.b - gaussPDF(c, sigma) / pdfMax * plotH * 0.85;
+        ctx.beginPath(); ctx.arc(px, py, 5, 0, 2 * Math.PI); ctx.fill();
+        // x-axis tick
+        ctx.fillRect(px - 0.5, h - pad.b, 1, 5);
+      }
+      // tick labels
+      ctx.fillStyle = THEME.mute; ctx.font = "10px ui-monospace, Menlo, monospace";
+      ctx.fillText(xmin.toPrecision(2), pad.l - 10, h - pad.b + 14);
+      ctx.fillText(xmax.toPrecision(2), w - pad.r - 30, h - pad.b + 14);
+      if (opts && opts.title) {
+        ctx.fillStyle = THEME.textDim; ctx.font = "12px ui-monospace, Menlo, monospace";
+        ctx.fillText(opts.title, pad.l, pad.t - 6);
+      }
+    }
+
+    /* ================================================================
+       Primer HUD background (PR palette defined up top, theme-aware).
+       ================================================================ */
+    function clearHud(ctx, w, h) {
+      ctx.fillStyle = PR.panelBg; ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = accentRGBA(0.05); ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = 16; x < w; x += 32) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+      for (let y = 16; y < h; y += 32) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+      ctx.stroke();
+    }
+
+    // Unified draggable-tip handle. Uses the same look for every draggable vector
+    // tip across the page so the reader learns the vocabulary once.
+    function drawDragTip(ctx, x, y, color) {
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.22; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = THEME.bg; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    /* ---------- 1D Cost Function Demo ---------- */
+    (function () {
+      const cv = document.getElementById("manifold-cv"); if (!cv) return;
+      const posOut = document.getElementById("man-pos");
+      const costOut = document.getElementById("man-cost");
+      const nnCostOut = document.getElementById("man-nn-cost");
+      const distOut = document.getElementById("man-dist");
+
+      let testX = 0;
+      let dragging = false;
+
+      function solve(A, b) {
+        const n = b.length;
+        for (let i = 0; i < n; i++) {
+          let maxEl = Math.abs(A[i][i]);
+          let maxRow = i;
+          for (let k = i + 1; k < n; k++) {
+            if (Math.abs(A[k][i]) > maxEl) { maxEl = Math.abs(A[k][i]); maxRow = k; }
+          }
+          for (let k = i; k < n; k++) {
+            const tmp = A[maxRow][k]; A[maxRow][k] = A[i][k]; A[i][k] = tmp;
+          }
+          const tmp = b[maxRow]; b[maxRow] = b[i]; b[i] = tmp;
+          for (let k = i + 1; k < n; k++) {
+            const c = -A[k][i] / A[i][i];
+            for (let j = i; j < n; j++) {
+              if (i === j) A[k][j] = 0; else A[k][j] += c * A[i][j];
+            }
+            b[k] += c * b[i];
+          }
+        }
+        const x = new Array(n);
+        for (let i = n - 1; i >= 0; i--) {
+          x[i] = b[i] / A[i][i];
+          for (let k = i - 1; k >= 0; k--) { b[k] -= A[k][i] * x[i]; }
+        }
+        return x;
+      }
+
+      function oldCostFunc(x) {
+        return 2 + Math.sin(x * 3) + 0.5 * Math.cos(x * 7);
+      }
+
+      const staticPoints = [
+        { x: -1.5, cost: oldCostFunc(-1.5) },
+        { x: -0.7, cost: oldCostFunc(-0.7) },
+        { x: -0.5, cost: oldCostFunc(-0.5) },
+        { x: -0.3, cost: oldCostFunc(-0.3) },
+        { x: 0.5, cost: oldCostFunc(0.5) },
+        { x: 1.2, cost: oldCostFunc(1.2) },
+        { x: 1.3, cost: oldCostFunc(1.3) },
+        { x: 1.5, cost: oldCostFunc(1.5) }
+      ];
+
+      const epsilon = 1.5;
+      let weights = [];
+
+      function phi(r) {
+        return Math.exp(-((r * epsilon) ** 2));
+      }
+
+      function dphi(r) {
+        return -2 * epsilon * epsilon * r * Math.exp(-((r * epsilon) ** 2));
+      }
+
+      function computeRBFWeights() {
+        const n = staticPoints.length;
+        const A = [];
+        const b = [];
+        for (let i = 0; i < n; i++) {
+          const row = [];
+          for (let j = 0; j < n; j++) {
+            row.push(phi(Math.abs(staticPoints[i].x - staticPoints[j].x)));
+          }
+          row[i] += 0.05; // Regularization to prevent matrix ill-conditioning and wild oscillations
+          A.push(row);
+          b.push(staticPoints[i].cost);
+        }
+        weights = solve(A, b);
+      }
+
+      function costFunc(x) {
+        let sum = 0;
+        for (let i = 0; i < staticPoints.length; i++) {
+          sum += weights[i] * phi(Math.abs(x - staticPoints[i].x));
+        }
+        return Math.min(4, Math.max(0, sum));
+      }
+
+      function derivFunc(x) {
+        let sum = 0;
+        for (let i = 0; i < staticPoints.length; i++) {
+          const dx = x - staticPoints[i].x;
+          sum += weights[i] * dphi(dx);
+        }
+        return sum;
+      }
+
+      function updateTable() {
+        const tbody = document.getElementById("cache-table-body");
+        if (!tbody) return;
+        tbody.innerHTML = "";
+        staticPoints.forEach((p, i) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>#${i+1}</td>
+            <td style="font-family: monospace;">[${p.x.toFixed(3)}]</td>
+            <td style="color: var(--accent); font-weight: bold;">${p.cost.toFixed(2)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        // Update storage readouts
+        const n = staticPoints.length;
+        const dims = 1536; // Simulate real embedding dims
+        const cacheBytes = n * (dims * 4 + 4); // 1536 floats + 1 float for cost
+        // In our demo, manifold stores weights + centers in 1D
+        const manifoldBytes = n * (1 * 4 + 4); 
+        
+        const cacheStorageEl = document.getElementById("cache-storage");
+        const manifoldStorageEl = document.getElementById("manifold-storage");
+        if (cacheStorageEl && manifoldStorageEl) {
+          cacheStorageEl.textContent = `${(cacheBytes / 1024).toFixed(2)} KB`;
+          manifoldStorageEl.textContent = `${(manifoldBytes / 1024).toFixed(2)} KB`;
+        }
+      }
+
+      computeRBFWeights();
+      updateTable();
+
+      function findClosest(x) {
+        let closest = staticPoints[0];
+        let minDist = Math.abs(x - closest.x);
+        staticPoints.forEach(p => {
+          const d = Math.abs(x - p.x);
+          if (d < minDist) {
+            minDist = d;
+            closest = p;
+          }
+        });
+        return { point: closest, dist: minDist };
+      }
+
+      function toPx(w, h, x, y) {
+        const scaleX = w / 4;
+        const scaleY = h / 4;
+        const cx = w / 2, cy = h - 20;
+        return { x: cx + x * scaleX, y: cy - y * scaleY };
+      }
+
+      function toWorld(w, h, px) {
+        const scaleX = w / 4;
+        const cx = w / 2;
+        return (px - cx) / scaleX;
+      }
+
+      function draw() {
+        const { ctx, w, h } = setupCanvas(cv);
+        clearHud(ctx, w, h);
+
+        // Debug: Draw red rectangle (smaller)
+        ctx.fillStyle = "red";
+        ctx.fillRect(5, 5, 10, 10);
+
+        const zero = toPx(w, h, 0, 0);
+        
+        ctx.strokeStyle = THEME.gridSoft;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath(); ctx.moveTo(0, zero.y); ctx.lineTo(w, zero.y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(zero.x, 0); ctx.lineTo(zero.x, h); ctx.stroke();
+
+        ctx.strokeStyle = THEME.ocean;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let px = 0; px < w; px++) {
+          const wx = toWorld(w, h, px);
+          const wy = costFunc(wx);
+          const p = toPx(w, h, wx, wy);
+          if (px === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        }
+        ctx.stroke();
+
+        // Draw static points on X-axis (Y=0)
+        staticPoints.forEach(p => {
+          const pt = toPx(w, h, p.x, 0);
+          ctx.fillStyle = THEME.blue;
+          ctx.beginPath(); ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = THEME.textDim;
+          ctx.font = PR.fontSm;
+          ctx.fillText(`C:${p.cost.toFixed(1)}`, pt.x + 6, pt.y - 6);
+        });
+
+        const cost = costFunc(testX);
+        const grad = derivFunc(testX);
+        const tp = toPx(w, h, testX, cost);
+
+        // Find closest
+        const { point, dist } = findClosest(testX);
+        const closestPt = toPx(w, h, point.x, 0); // Connect to X-axis
+
+        // Draw line to closest
+        ctx.strokeStyle = THEME.warn;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(tp.x, tp.y);
+        ctx.lineTo(closestPt.x, closestPt.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = THEME.accent;
+        ctx.beginPath(); ctx.arc(tp.x, tp.y, 6, 0, Math.PI * 2); ctx.fill();
+
+        drawDragTip(ctx, tp.x, tp.y, THEME.accent);
+
+        ctx.strokeStyle = THEME.accent;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        const dx = 0.2;
+        const p1 = toPx(w, h, testX - dx, cost - grad * dx);
+        const p2 = toPx(w, h, testX + dx, cost + grad * dx);
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+
+        posOut.textContent = testX.toFixed(2);
+        costOut.textContent = cost.toFixed(2);
+        nnCostOut.textContent = point.cost.toFixed(2);
+        distOut.textContent = dist.toFixed(2);
+      }
+
+      function handle(e) {
+        const r = cv.getBoundingClientRect();
+        const px = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+        const w = r.width;
+        const h = r.height;
+        testX = toWorld(w, h, px);
+        if (testX < -2) testX = -2;
+        if (testX > 2) testX = 2;
+        draw();
+      }
+
+      cv.addEventListener("mousedown", (e) => { dragging = true; handle(e); });
+      window.addEventListener("mousemove", (e) => { if (dragging) handle(e); });
+      window.addEventListener("mouseup", () => dragging = false);
+
+      cv.addEventListener("touchstart", (e) => { dragging = true; handle(e); e.preventDefault(); });
+      cv.addEventListener("touchmove", (e) => { if (dragging) handle(e); e.preventDefault(); });
+      cv.addEventListener("touchend", () => dragging = false);
+
+      window.addEventListener("resize", draw);
+      const costSlider = document.getElementById("new-point-cost");
+      const costVal = document.getElementById("new-cost-val");
+      if (costSlider && costVal) {
+        costSlider.oninput = () => {
+          costVal.textContent = parseFloat(costSlider.value).toFixed(1);
+        };
+      }
+
+      const addBtn = document.getElementById("add-point-btn");
+      if (addBtn) {
+        addBtn.onclick = () => {
+          const cost = costSlider ? parseFloat(costSlider.value) : Math.random() * 4;
+          const randomX = (Math.random() - 0.5) * 4; // Random X between -2 and 2
+          staticPoints.push({ x: randomX, cost: cost });
+          computeRBFWeights();
+          updateTable();
+          draw();
+        };
+      }
+
+      const clearBtn = document.getElementById("clear-points-btn");
+      if (clearBtn) {
+        clearBtn.onclick = () => {
+          staticPoints.length = 0;
+          staticPoints.push(
+            { x: -1.5, cost: oldCostFunc(-1.5) },
+            { x: -0.7, cost: oldCostFunc(-0.7) },
+            { x: -0.5, cost: oldCostFunc(-0.5) },
+            { x: -0.3, cost: oldCostFunc(-0.3) },
+            { x: 0.5, cost: oldCostFunc(0.5) },
+            { x: 1.2, cost: oldCostFunc(1.2) },
+            { x: 1.3, cost: oldCostFunc(1.3) },
+            { x: 1.5, cost: oldCostFunc(1.5) }
+          );
+          computeRBFWeights();
+          updateTable();
+          draw();
+        };
+      }
+
+      draw();
+    })();
+
+    /* ================================================================
+       Corner-bracket injector, add bottom brackets to every panel/card
+       ================================================================ */
+    (function () {
+      document.querySelectorAll(".card, .panel").forEach(el => {
+        if (el.querySelector(":scope > i.cbr.bl")) return;
+        const bl = document.createElement("i"); bl.className = "cbr bl";
+        const br = document.createElement("i"); br.className = "cbr br";
+        el.appendChild(bl); el.appendChild(br);
+      });
+    })();
+
+    /* ================================================================
+       TOC active-section highlight
+       ================================================================ */
+    (function () {
+      const links = [...document.querySelectorAll("nav.toc a")];
+      const sections = links.map(a => document.querySelector(a.getAttribute("href")));
+      function update() {
+        const y = window.scrollY + 120;
+        let active = 0;
+        for (let i = 0; i < sections.length; i++) {
+          if (sections[i] && sections[i].offsetTop <= y) active = i;
+        }
+        links.forEach((a, i) => a.classList.toggle("active", i === active));
+      }
+      window.addEventListener("scroll", update, { passive: true });
+      update();
+    })();
+
+    /* ================================================================
+       Draw mini-manifolds for the Visuals section
+       ================================================================ */
+    (function () {
+      function drawMiniManifold(canvasId, type) {
+        const cv = document.getElementById(canvasId);
+        if (!cv) return;
+        const ctx = cv.getContext('2d');
+        const rect = cv.parentElement.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        cv.width = rect.width * dpr;
+        cv.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        
+        const w = rect.width;
+        const h = rect.height;
+        
+        // Clear
+        const cs = getComputedStyle(document.documentElement);
+        ctx.fillStyle = cs.getPropertyValue('--canvas-bg').trim() || '#020c1b';
+        ctx.fillRect(0, 0, w, h);
+        
+        // Draw grid
+        ctx.strokeStyle = cs.getPropertyValue('--canvas-grid-soft').trim() || '#0a192f';
+        ctx.lineWidth = 1;
+        for(let x=0; x<w; x+=30) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+        }
+        for(let y=0; y<h; y+=30) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        }
+        
+        // Draw curve based on type
+        ctx.strokeStyle = cs.getPropertyValue('--accent').trim() || '#00b4d8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        if (type === 'plateau') {
+          ctx.moveTo(0, h * 0.7);
+          for(let x=0; x<=w; x++) {
+            ctx.lineTo(x, h * 0.7 + Math.sin(x/15)*3);
+          }
+        } else if (type === 'cliff') {
+          ctx.moveTo(0, h * 0.8);
+          for(let x=0; x<=w; x++) {
+            const val = x / w;
+            const y = h * 0.8 - (h * 0.6) / (1 + Math.exp(-(val - 0.5) * 30));
+            ctx.lineTo(x, y);
+          }
+        } else if (type === 'well') {
+          ctx.moveTo(0, h * 0.3);
+          for(let x=0; x<=w; x++) {
+            const val = (x - w/2) / (w/6);
+            const y = h * 0.3 + (h * 0.5) * Math.exp(-val*val);
+            ctx.lineTo(x, y);
+          }
+        }
+        ctx.stroke();
+        
+        // Draw some static points
+        ctx.fillStyle = cs.getPropertyValue('--blue').trim() || '#4ea8de';
+        if (type === 'plateau') {
+          drawDot(ctx, w*0.3, h*0.7, 4);
+          drawDot(ctx, w*0.7, h*0.7, 4);
+        } else if (type === 'cliff') {
+          drawDot(ctx, w*0.3, h*0.8, 4);
+          drawDot(ctx, w*0.7, h*0.2, 4);
+        } else if (type === 'well') {
+          drawDot(ctx, w*0.2, h*0.3, 4);
+          drawDot(ctx, w*0.5, h*0.8, 4);
+          drawDot(ctx, w*0.8, h*0.3, 4);
+        }
+      }
+      
+      function drawDot(ctx, x, y, r) {
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI*2);
+        ctx.fill();
+      }
+      
+      function drawAll() {
+        drawMiniManifold('plateau-cv', 'plateau');
+        drawMiniManifold('cliff-cv', 'cliff');
+        drawMiniManifold('well-cv', 'well');
+      }
+      
+      window.addEventListener('resize', drawAll);
+      setTimeout(drawAll, 100);
+    })();
+
+    /* ================================================================
+       UMAP Scatter Plot & Continuous Cost Manifold Demo
+       ================================================================ */
+    (function () {
+      const cv = document.getElementById("umap-scatter-cv");
+      if (!cv) return;
+      const tooltip = document.getElementById("umap-tooltip");
+      const { ctx, w, h } = setupCanvas(cv);
+      
+      // Generate mock points in clusters
+      const points = [];
+      const clusters = [
+        { cx: -1, cy: -1, r: 0.5, baseCost: 0.5, name: "Weather API" },
+        { cx: 1, cy: 1, r: 0.4, baseCost: 0.1, name: "DB Query" },
+        { cx: -1, cy: 1, r: 0.6, baseCost: 3.0, name: "Image Gen" },
+        { cx: 1, cy: -1, r: 0.3, baseCost: 0.3, name: "Distance Calc" }
+      ];
+      
+      for (let i = 0; i < 200; i++) {
+        const cluster = clusters[Math.floor(Math.random() * clusters.length)];
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.random() * cluster.r;
+        const x = cluster.cx + Math.cos(angle) * dist;
+        const y = cluster.cy + Math.sin(angle) * dist;
+        const cost = cluster.baseCost + (Math.random() - 0.5) * 0.1;
+        points.push({ x, y, cost, name: cluster.name });
+      }
+      
+      // Simple interpolation function for background (Surrogate Model)
+      function getManifoldCost(x, y) {
+        let totalWeight = 0;
+        let weightedCost = 0;
+        for (const c of clusters) {
+          const d = Math.sqrt((x - c.cx)**2 + (y - c.cy)**2);
+          const w = 1 / (d + 0.1)**2; // RBF-like weight
+          totalWeight += w;
+          weightedCost += c.baseCost * w;
+        }
+        return weightedCost / totalWeight;
+      }
+      
+      function toPx(x, y) {
+        return {
+          x: (x + 2) / 4 * w,
+          y: (2 - y) / 4 * h
+        };
+      }
+      
+      function toWorld(px, py) {
+        return {
+          x: (px / w) * 4 - 2,
+          y: 2 - (py / h) * 4
+        };
+      }
+      
+      function draw() {
+        ctx.clearRect(0, 0, w, h);
+        
+        // Draw continuous background (heatmap)
+        const step = 4;
+        for (let px = 0; px < w; px += step) {
+          for (let py = 0; py < h; py += step) {
+            const world = toWorld(px, py);
+            const cost = getManifoldCost(world.x, world.y);
+            
+            // Map cost to color (0.1 to 3.0)
+            const norm = Math.min(1, Math.max(0, (cost - 0.1) / 2.9));
+            // Interpolate between Cyan RGB(0, 180, 216) and Red RGB(239, 71, 111)
+            const r = Math.round(0 + norm * (239 - 0));
+            const g = Math.round(180 + norm * (71 - 180));
+            const b = Math.round(216 + norm * (111 - 216));
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.2)`; // Subtle alpha
+            ctx.fillRect(px, py, step, step);
+          }
+        }
+        
+        // Draw points
+        for (const p of points) {
+          const px = toPx(p.x, p.y);
+          ctx.fillStyle = p.cost > 1.5 ? 'rgba(239, 71, 111, 0.8)' : 'rgba(0, 180, 216, 0.8)'; // Red or Cyan
+          ctx.beginPath();
+          ctx.arc(px.x, px.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      
+      cv.addEventListener('mousemove', (e) => {
+        const rect = cv.getBoundingClientRect();
+        const px = e.clientX - rect.left;
+        const py = e.clientY - rect.top;
+        const world = toWorld(px, py);
+        const cost = getManifoldCost(world.x, world.y);
+        
+        tooltip.style.display = 'block';
+        tooltip.style.left = `${px + 10}px`;
+        tooltip.style.top = `${py + 10}px`;
+        
+        // Find closest point for name
+        let closest = points[0];
+        let minDist = Math.sqrt((world.x - closest.x)**2 + (world.y - closest.y)**2);
+        for(const p of points) {
+          const d = Math.sqrt((world.x - p.x)**2 + (world.y - p.y)**2);
+          if(d < minDist) { minDist = d; closest = p; }
+        }
+        
+        if (minDist < 0.3) {
+          tooltip.innerHTML = `<strong>${closest.name}</strong><br>Cost: ${cost.toFixed(2)}s`;
+        } else {
+          tooltip.innerHTML = `Manifold Cost: ${cost.toFixed(2)}s`;
+        }
+      });
+      
+      cv.addEventListener('mouseleave', () => {
+        tooltip.style.display = 'none';
+      });
+      
+      draw();
+    })();
+
+    /* ================================================================
+       Direct MLP Scatter Plot & Cost Surface Demo
+       ================================================================ */
+    (function () {
+      const cv = document.getElementById("mlp-scatter-cv");
+      if (!cv) return;
+      const tooltip = document.getElementById("mlp-tooltip");
+      const { ctx, w, h } = setupCanvas(cv);
+      
+      // Generate mock points in tighter clusters (better separation)
+      const points = [];
+      const clusters = [
+        { cx: -1, cy: -1, r: 0.3, baseCost: 0.5, name: "Weather API" },
+        { cx: 1, cy: 1, r: 0.2, baseCost: 0.1, name: "DB Query" },
+        { cx: -1.2, cy: 1.2, r: 0.2, baseCost: 2.0, name: "Image Gen (Painting)" },
+        { cx: -0.7, cy: 0.7, r: 0.15, baseCost: 6.0, name: "Image Gen (3D Render)" },
+        { cx: 1, cy: -1, r: 0.2, baseCost: 0.3, name: "Distance Calc" }
+      ];
+      
+      for (let i = 0; i < 200; i++) {
+        const cluster = clusters[Math.floor(Math.random() * clusters.length)];
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.random() * cluster.r;
+        const x = cluster.cx + Math.cos(angle) * dist;
+        const y = cluster.cy + Math.sin(angle) * dist;
+        const cost = cluster.baseCost + (Math.random() - 0.5) * 0.05; // Less noise
+        points.push({ x, y, cost, name: cluster.name });
+      }
+      
+      // Simple interpolation function for background (Surrogate Model)
+      function getManifoldCost(x, y) {
+        let totalWeight = 0;
+        let weightedCost = 0;
+        for (const c of clusters) {
+          const d = Math.sqrt((x - c.cx)**2 + (y - c.cy)**2);
+          const w = 1 / (d + 0.05)**2; // Steeper RBF
+          totalWeight += w;
+          weightedCost += c.baseCost * w;
+        }
+        return weightedCost / totalWeight;
+      }
+      
+      function toPx(x, y) {
+        return {
+          x: (x + 2) / 4 * w,
+          y: (2 - y) / 4 * h
+        };
+      }
+      
+      function toWorld(px, py) {
+        return {
+          x: (px / w) * 4 - 2,
+          y: 2 - (py / h) * 4
+        };
+      }
+      
+      function draw() {
+        ctx.clearRect(0, 0, w, h);
+        
+        // Draw continuous background (heatmap)
+        const step = 4;
+        for (let px = 0; px < w; px += step) {
+          for (let py = 0; py < h; py += step) {
+            const world = toWorld(px, py);
+            const cost = getManifoldCost(world.x, world.y);
+            
+            // Map cost to color (0.1 to 3.0)
+            const norm = Math.min(1, Math.max(0, (cost - 0.1) / 2.9));
+            // Interpolate between Cyan RGB(0, 180, 216) and Red RGB(239, 71, 111)
+            const r = Math.round(0 + norm * (239 - 0));
+            const g = Math.round(180 + norm * (71 - 180));
+            const b = Math.round(216 + norm * (111 - 216));
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.2)`; // Subtle alpha
+            ctx.fillRect(px, py, step, step);
+          }
+        }
+        
+        // Draw points
+        for (const p of points) {
+          const px = toPx(p.x, p.y);
+          ctx.fillStyle = p.cost > 1.5 ? 'rgba(239, 71, 111, 0.8)' : 'rgba(0, 180, 216, 0.8)'; // Red or Cyan
+          ctx.beginPath();
+          ctx.arc(px.x, px.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      
+      cv.addEventListener('mousemove', (e) => {
+        const rect = cv.getBoundingClientRect();
+        const px = e.clientX - rect.left;
+        const py = e.clientY - rect.top;
+        const world = toWorld(px, py);
+        const cost = getManifoldCost(world.x, world.y);
+        
+        tooltip.style.display = 'block';
+        tooltip.style.left = `${px + 10}px`;
+        tooltip.style.top = `${py + 10}px`;
+        
+        // Find closest point for name
+        let closest = points[0];
+        let minDist = Math.sqrt((world.x - closest.x)**2 + (world.y - closest.y)**2);
+        for(const p of points) {
+          const d = Math.sqrt((world.x - p.x)**2 + (world.y - p.y)**2);
+          if(d < minDist) { minDist = d; closest = p; }
+        }
+        
+        if (minDist < 0.3) {
+          tooltip.innerHTML = `<strong>${closest.name}</strong><br>Cost: ${cost.toFixed(2)}s`;
+        } else {
+          tooltip.innerHTML = `Manifold Cost: ${cost.toFixed(2)}s`;
+        }
+      });
+      
+      cv.addEventListener('mouseleave', () => {
+        tooltip.style.display = 'none';
+      });
+      
+      draw();
+    })();
+
+    /* ================================================================
+       F1 Cluster Zoom-in Demo
+       ================================================================ */
+    (function () {
+      const cv = document.getElementById("f1-cluster-cv");
+      if (!cv) return;
+      const { ctx, w, h } = setupCanvas(cv);
+      
+      // Actual coordinates from our run
+      const points = [
+        { label: "LIMIT 10", x: 11.0397, y: 15.8447 },
+        { label: "LIMIT 100", x: 11.0071, y: 15.5237 },
+        { label: "LIMIT 300", x: 11.2282, y: 15.5297 },
+        { label: "LIMIT 500", x: 11.2165, y: 15.5758 },
+        { label: "LIMIT 700", x: 11.3254, y: 15.6707 },
+        { label: "LIMIT 1000", x: 10.9286, y: 15.8582 }
+      ];
+      
+      // Find bounds to zoom in
+      const xs = points.map(p => p.x);
+      const ys = points.map(p => p.y);
+      const minX = Math.min(...xs) - 0.1;
+      const maxX = Math.max(...xs) + 0.1;
+      const minY = Math.min(...ys) - 0.1;
+      const maxY = Math.max(...ys) + 0.1;
+      
+      function toPx(x, y) {
+        return {
+          x: (x - minX) / (maxX - minX) * w,
+          y: h - (y - minY) / (maxY - minY) * h // Flip Y
+        };
+      }
+      
+      function draw() {
+        ctx.clearRect(0, 0, w, h);
+        
+        // Draw background grid manually since clearHud might clear it
+        ctx.fillStyle = '#020c1b';
+        ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = '#0a192f';
+        ctx.lineWidth = 1;
+        for(let x=0; x<w; x+=30) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+        }
+        for(let y=0; y<h; y+=30) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        }
+        
+        // Draw path
+        ctx.strokeStyle = 'rgba(0, 180, 216, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < points.length; i++) {
+          const p = toPx(points[i].x, points[i].y);
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        }
+        ctx.stroke();
+        
+        // Draw points and labels
+        for (const p of points) {
+          const px = toPx(p.x, p.y);
+          ctx.fillStyle = '#00b4d8';
+          ctx.beginPath();
+          ctx.arc(px.x, px.y, 5, 0, Math.PI * 2);
+          ctx.fill();
+          
+          ctx.fillStyle = '#ccd6f6';
+          ctx.font = "10px 'JetBrains Mono', monospace";
+          ctx.fillText(p.label, px.x + 8, px.y + 4);
+        }
+      }
+      
+      draw();
+      window.addEventListener('resize', draw);
+    })();
+  </script>
+</body>
+
+</html>
